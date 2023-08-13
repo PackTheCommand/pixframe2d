@@ -1,0 +1,18 @@
+
+#Images:
+
+
+#background_image::Image by upklyak on Freepik
+ https://www.freepik.com/free-vector/space-game-background-with-landscape-planet_
+ 7743075.htm#query=game%20background&position=8&from_view=keyword&track=ais
+
+
+# background_image2::Image by upklyak on Freepik
+ https://www.freepik.com/free-vector/mars-landscape-alien-planet-martian-background_7743415.
+ htm#query=game%20background&position=26&from_view=keyword&track=ais
+
+
+#Sounds:
+
+# communicate by StephieQueen
+Source: freesound.org  >> https://freesound.org/people/StephieQueen/sounds/650556/
