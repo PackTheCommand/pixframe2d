@@ -10,76 +10,61 @@ class PathfindingApp:
         self.canvas = tk.Canvas(root, width=400, height=400, bg="white")
         self.canvas.pack()
 
-        self.pathstore = []
+        self.object_pathstore = []
         self.path_labels = []  # Store path label data (names)
         self.path_metadata = {}
-        self.points = []
+        self.pathpoints = []
         self.current_path = []
 
-        self.path_list_frame = tk.Frame(root)
-        self.path_list_frame.pack(side="right", padx=10, pady=10)
+        self.pathInfo_overviewList_frame = tk.Frame(root)
+        self.pathInfo_overviewList_frame.pack(side="right", padx=10, pady=10)
 
         self.path_entries = []
         self.pathfinding_mode = False
-        self.toggle_button = tk.Button(root, text="Toggle Pathfinding Mode", command=self.toggle_mode)
-        self.toggle_button.pack()
+        self.toggle_pathEdit_on_button = tk.Button(root, text="Toggle Pathfinding Mode", command=self.toggle_path_craete_mode)
+        self.toggle_pathEdit_on_button.pack()
 
-        self.toggle_visibility_button = tk.Button(root, text="Toggle Visibility", command=self.toggle_visibility)
+        self.toggle_visibility_button = tk.Button(root, text="Toggle Visibility", command=self.toggle_object_path_visibility)
         self.toggle_visibility_button.pack()
 
         self.canvas.bind("<Button-1>", self.canvas_click)
-        self.root.bind("<Return>", self.end_path)
+
         def pr(e):
-            print(self.pathstore)
+            print(self.object_pathstore)
 
         self.root.bind("<e>",pr)
 
-    def toggle_mode(self):
+    def toggle_path_craete_mode(self):
         self.pathfinding_mode = not self.pathfinding_mode
         if self.pathfinding_mode:
-            self.toggle_button.config(text="Exit Pathfinding Mode")
+            self.toggle_pathEdit_on_button.config(text="Exit Pathfinding Mode")
             self.current_path = []
         else:
-            self.toggle_button.config(text="Toggle Pathfinding Mode")
+            self.toggle_pathEdit_on_button.config(text="Toggle Pathfinding Mode")
             if self.current_path:
                 id = self.gen_path_id()
 
                 self.path_metadata[id] = {"name": "New Path", "data": {}}
-                self.pathstore.append((self.current_path,id))
+                self.object_pathstore.append((self.current_path, id))
                 self.current_path = []
-            self.draw_paths()
+            self.draw_object_paths()
 
     def canvas_click(self, event):
         if self.pathfinding_mode:
             x, y = event.x, event.y
-            self.points.append((x, y))
+            self.pathpoints.append((x, y))
             self.current_path.append((x, y))
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red", tags=["paths","temp_paths"])
             if len(self.current_path) > 1:
                 self.canvas.create_line(self.current_path[-2], self.current_path[-1], fill="blue", tags=["paths","temp_paths"])
 
-    def end_path(self, event):
-        """
-        SEDUCED FOR REMOVAL !!!
 
-
-        :param event:
-        :return:
-        """
-        if self.pathfinding_mode and len(self.current_path) > 1:
-            path_name = f"Path {len(self.paths) + 1}"
-            id=self.gen_path_id()
-            self.paths.append((self.current_path.copy()),id)
-            self.path_metadata[id]={"name":path_name,"data":{}}
-            self.path_labels.append(path_name)
-            self.current_path = []
-            self.draw_paths()
     def gen_path_id(self):
         return ''.join(random.choices(["1","2","3","4","5","6","7","8","9","a","b","c","d","e"], k=5))
-    def draw_paths(self):
+    def draw_object_paths(self):
         self.canvas.delete("temp_paths")
         self.canvas.delete("paths")
-        for path,id in self.pathstore:
+        for path,id in self.object_pathstore:
 
             for i in range(len(path) - 1):
                 self.canvas.create_line(path[i], path[i + 1], fill="green", tags=["paths","o"],)
@@ -91,9 +76,9 @@ class PathfindingApp:
         self.path_entries = []
 
         # Create path entries in the list frame
-        for index, path_pac in enumerate(self.pathstore):
+        for index, path_pac in enumerate(self.object_pathstore):
             path, id=path_pac
-            path_entry = tk.Frame(self.path_list_frame, bg="white")
+            path_entry = tk.Frame(self.pathInfo_overviewList_frame, bg="white")
             print(path)
             print(self.path_labels)
 
@@ -105,15 +90,15 @@ class PathfindingApp:
             name_label = tk.Label(path_entry, text=self.path_metadata[id]["name"], width=15, anchor="w")
             name_label.pack(side="left")
 
-            edit_button = tk.Button(path_entry, text="Edit", command=lambda i=index: self.edit_path(id))
+            edit_button = tk.Button(path_entry, text="Edit", command=lambda i=index: self.edit_object_path_metadata(id))
             edit_button.pack(side="right")
 
-            remove_button = tk.Button(path_entry, text="❌", command=lambda i=index: self.remove_path(i))
+            remove_button = tk.Button(path_entry, text="❌", command=lambda i=index: self.remove_object_path(i))
             remove_button.pack(side="right")
 
             self.path_entries.append(path_entry)
 
-    def edit_path(self, id):
+    def edit_object_path_metadata(self, id):
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Edit Path")
 
@@ -124,22 +109,22 @@ class PathfindingApp:
         new_name_entry.pack()
 
         save_button = tk.Button(edit_window, text="Save",
-                                command=lambda: self.save_edited_path(id, new_name_entry.get(), edit_window))
+                                command=lambda: self.path_save_edited_metadata(id, new_name_entry.get(), edit_window))
         save_button.pack()
 
-    def save_edited_path(self, id, new_name, edit_window):
+    def path_save_edited_metadata(self, id, new_name, edit_window):
 
         self.path_metadata[id]["name"]=new_name
 
-        self.draw_paths()
+        self.draw_object_paths()
         edit_window.destroy()
 
-    def remove_path(self, index):
-        if 0 <= index < len(self.pathstore):
-            path,id=self.pathstore.pop(index)
+    def remove_object_path(self, index):
+        if 0 <= index < len(self.object_pathstore):
+            path,id=self.object_pathstore.pop(index)
             self.path_metadata.pop(id)
-            self.draw_paths()
-    def toggle_visibility(self):
+            self.draw_object_paths()
+    def toggle_object_path_visibility(self):
         current_visibility = self.canvas.itemcget("paths", "state")
         new_visibility = "normal" if current_visibility == "hidden" else "hidden"
         #self.canvas.tag_raise("paths")
