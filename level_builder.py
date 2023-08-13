@@ -100,10 +100,13 @@ import ui_code
 
 class CanvasApp:
     def __init__(self, root):
+        self.preview_point = None
+
         self.b = None
         self.selected_index = None
         self.bg_image_path = ""
         self.grid_size = 50
+        self.grid_spacing = 50
         self.protected_elements = []
         self.root = root
         self.root.title("Level Editor")
@@ -166,6 +169,7 @@ class CanvasApp:
         self.root.bind("<f>", lambda e: self.toggle_fill_mode())
         self.root.bind("<r>", lambda e: self.toggle_rubber_mode())
         self.save_button.pack(side=tk.BOTTOM, fill=tk.X)
+        self.canvas.bind("<Motion>", self.update_preview)
 
         # Initialize data
         self.images = []
@@ -398,6 +402,15 @@ class CanvasApp:
 
         self.draw_object_paths()
         edit_window.destroy()
+    def update_preview(self, event):
+        if self.pathfinding_mode:
+            if self.preview_point:
+                self.canvas.delete(self.preview_point)
+            x, y = event.x, event.y
+            snapped_x = (x // self.grid_spacing) * self.grid_spacing+25
+            snapped_y = (y // self.grid_spacing) * self.grid_spacing+25
+            self.preview_point = self.canvas.create_oval(snapped_x - 4, snapped_y - 4, snapped_x + 4, snapped_y + 4,
+                                                         fill="gray", tags="temp_paths")
 
 
     def remove_object_path(self, index):
@@ -634,9 +647,12 @@ class CanvasApp:
     def canvas_left_click(self, event):
         if self.pathfinding_mode:
             x, y = event.x, event.y
-            self.pathpoints.append((x, y))
-            self.current_path.append((x, y))
-            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red", tags=["paths","temp_paths","#movable"])
+            snapped_x = (x // self.grid_spacing) * self.grid_spacing+25
+            snapped_y = (y // self.grid_spacing) * self.grid_spacing+25
+
+            self.pathpoints.append((snapped_x, snapped_y))
+            self.current_path.append((snapped_x, snapped_y))
+            self.canvas.create_oval(snapped_x - 3, snapped_y - 3, snapped_x + 3, snapped_y + 3, fill="red", tags=["paths","temp_paths","#movable"])
             if len(self.current_path) > 1:
                 self.canvas.create_line(self.current_path[-2], self.current_path[-1], fill="blue", tags=["paths","temp_paths","#movable"])
 
