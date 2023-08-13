@@ -14,6 +14,8 @@ class PathfindingApp:
         self.path_labels = []  # Store path label data (names)
         self.path_metadata = {}
         self.pathpoints = []
+        self.points = []
+        self.grid_spacing=50
         self.current_path = []
 
         self.pathInfo_overviewList_frame = tk.Frame(root)
@@ -28,11 +30,25 @@ class PathfindingApp:
         self.toggle_visibility_button.pack()
 
         self.canvas.bind("<Button-1>", self.canvas_click)
+        self.preview_point = None
+
+        # Bind the motion event to the canvas
+        self.canvas.bind("<Motion>", self.update_preview)
 
         def pr(e):
             print(self.object_pathstore)
 
         self.root.bind("<e>",pr)
+
+    def update_preview(self, event):
+        if self.pathfinding_mode:
+            if self.preview_point:
+                self.canvas.delete(self.preview_point)
+            x, y = event.x, event.y
+            snapped_x = (x // self.grid_spacing) * self.grid_spacing+25
+            snapped_y = (y // self.grid_spacing) * self.grid_spacing+25
+            self.preview_point = self.canvas.create_oval(snapped_x - 4, snapped_y - 4, snapped_x + 4, snapped_y + 4,
+                                                         fill="gray", tags="temp_paths")
 
     def toggle_path_craete_mode(self):
         self.pathfinding_mode = not self.pathfinding_mode
@@ -52,11 +68,13 @@ class PathfindingApp:
     def canvas_click(self, event):
         if self.pathfinding_mode:
             x, y = event.x, event.y
-            self.pathpoints.append((x, y))
-            self.current_path.append((x, y))
-            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red", tags=["paths","temp_paths"])
+            snapped_x = (x // self.grid_spacing) * self.grid_spacing+25
+            snapped_y = (y // self.grid_spacing) * self.grid_spacing+25
+            self.points.append((snapped_x, snapped_y))
+            self.current_path.append((snapped_x, snapped_y))
+            self.canvas.create_oval(snapped_x - 3, snapped_y - 3, snapped_x + 3, snapped_y + 3, fill="red", tags=["paths", "temp_paths"])
             if len(self.current_path) > 1:
-                self.canvas.create_line(self.current_path[-2], self.current_path[-1], fill="blue", tags=["paths","temp_paths"])
+                self.canvas.create_line(self.current_path[-2], self.current_path[-1], fill="blue", tags=["paths", "temp_paths"])
 
 
     def gen_path_id(self):

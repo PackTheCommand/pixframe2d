@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import tkinter
 import tkinter as tk
 from tkinter import filedialog, ttk
@@ -201,20 +202,36 @@ class CanvasApp:
         style.configure("TNotebook", background="#2E2E2E")  # Dark gray background
         style.configure("TNotebook.Tab", background="#3E3E3E", foreground="white")  # Dark gray tab with white text
         style.map("TNotebook.Tab", background=[("selected", "#505050")])  # Selected tab color
+        style.configure("TCheckbutton", background="#444654", foreground="white", highlightbackground="#444654",
+                        highlightcolor="#444654",font=tkfont.Font(size=14,family="Bahnschrift"))
+        style.map("TCheckbutton",
+                  background=[("active", "#444654"), ("!active", "#333")],
+                  foreground=[("active", "white"), ("!active", "white")],
+                  highlightbackground=[("active", "#333440"), ("!active", "#333")],
+                  highlightcolor=[("active", "#333440"), ("!active", "#333")])
 
         editor_tabs_book = ttk.Notebook(self.right_Frame)
         editor_tabs_book.pack(side="top", fill="both", expand=True)
 
+
+
         # tab 1
         tab1 = tk.Frame(editor_tabs_book)
 
-        editor_tabs_book.add(tab1)
+        tap_paths = tk.Frame(editor_tabs_book,bg="#444654")
+
+
+
+
 
         # can
         canvas = tk.Canvas(tab1, width=200, bg='#333440', highlightthickness=0)
 
         editor_tabs_book.add(tab1, text="Elements",
-                             image=createImage("imgs/editor/editor_element_tab.png", 16, 16, name="elemts_tab_icon"))
+                             image=createImage("imgs/editor/editor_element_tab.png", 16, 16, name="elements_tab_icon"))
+
+        editor_tabs_book.add(tap_paths, text="Elements",
+                             image=createImage("imgs/editor/editor_paths_tab.png", 16, 16, name="path_tab_icon"))
 
         scrollbar = ttk.Scrollbar(master=tab1, command=canvas.yview, )
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -251,15 +268,148 @@ class CanvasApp:
 
         #path data
 
+        self.object_pathstore = []
+        self.path_labels = []  # Store path label data (names)
+        self.path_metadata = {}
+        self.pathpoints = []
+        self.current_path = []
+
+
+        self.path_entries = []
+        self.pathfinding_mode = False
+
+        checked_state = tk.BooleanVar()
+
+        def on_checkbox_click():
+            if checked_state.get():
+                new_visibility = "normal"
+                # self.canvas.tag_raise("paths")
+            else:
+                new_visibility = "hidden"
+
+            self.canvas.itemconfigure("paths", state=new_visibility)
+
+        """
+        ,bg='#444654',fg="white"
+        ,bg='#333440',fg="white"
+        
+        
+        """
+
+        checkbox = ttk.Checkbutton(tap_paths, text="Show Paths", variable=checked_state, command=on_checkbox_click)
+
+        checkbox.pack(anchor="nw",pady=(4,4),padx=(10,0))
+
+        self.toggle_pathEdit_on_button = tk.Button(tap_paths, text="+ Create New path",
+                                                   command=self.toggle_path_craete_mode,bg='#333440',fg="white")
+        self.toggle_pathEdit_on_button.pack(anchor="nw",pady=(4,4),padx=(10,0))
+        self.pathInfo_overviewList_frame = tk.LabelFrame(tap_paths,bg='#333440',text="Courant Paths",font=tkfont.Font(size=10),fg="white")
+        L=tk.Label(self.pathInfo_overviewList_frame,text="No Paths Created yet",bg='#333440',fg="white")
+        L.pack()
+        self.path_entries+=[L]
+        self.pathInfo_overviewList_frame.pack( padx=10, pady=10,fill="both")
+
+        """self.toggle_visibility_button = tk.Button(tap_paths, text="Toggle Visibility",
+                                                  command=self.toggle_object_path_visibility)
+        self.toggle_visibility_button.pack()"""
 
 
 
 
 
+    #path methods
+    def toggle_path_craete_mode(self):
+        self.pathfinding_mode = not self.pathfinding_mode
+        if self.pathfinding_mode:
+            self.toggle_pathEdit_on_button.config(text="Save Path")
+            self.current_path = []
+        else:
+            self.toggle_pathEdit_on_button.config(text="+ Create New Path")
+            if self.current_path:
+                id = self.gen_path_id()
+
+                self.path_metadata[id] = {"name": "New Path", "data": {}}
+                self.object_pathstore.append((self.current_path, id))
+                self.current_path = []
+            self.draw_object_paths()
+
+    def gen_path_id(self):
+        return ''.join(random.choices(["1","2","3","4","5","6","7","8","9","a","b","c","d","e"], k=5))
+    def draw_object_paths(self):
+        self.canvas.delete("temp_paths")
+        self.canvas.delete("paths")
+        for path,id in self.object_pathstore:
+
+            for i in range(len(path) - 1):
+                self.canvas.create_line(path[i], path[i + 1], fill="green", tags=["paths","#movable"],)
+                self.canvas.create_oval(path[i][0] - 3, path[i][1] - 3, path[i][0] + 3, path[i][1] + 3, fill="green", tags=["paths","#movable"])
+            self.canvas.create_oval(path[-1][0] - 3, path[-1][1] - 3, path[-1][0] + 3, path[-1][1] + 3, fill="red", tags=["paths","#movable"])
+
+        for entry in self.path_entries:
+            entry.destroy()
+        self.path_entries = []
+
+        # Create path entries in the list frame
+        for index, path_pac in enumerate(self.object_pathstore):
+            path, id=path_pac
+            path_entry = tk.Frame(self.pathInfo_overviewList_frame,bg='#333440')
+            print(path)
+            print(self.path_labels)
+            """
+                    ,bg='#444654',fg="white"
+                    ,bg='#333440',fg="white"
 
 
+                    """
+
+            path_entry.pack(fill="x")
+
+            number_label = tk.Label(path_entry, text=f"{index + 1}.", width=3, anchor="w",bg='#444654',fg="white")
+            number_label.pack(side="left")
+
+            name_label = tk.Label(path_entry, text=self.path_metadata[id]["name"], width=15, anchor="w",bg='#444654',fg="white")
+            name_label.pack(side="left")
+
+            edit_button = tk.Button(path_entry, text="Edit", command=lambda i=index: self.edit_object_path_metadata(id),bg='#444654',fg="white")
+            edit_button.pack(side="right")
+
+            remove_button = tk.Button(path_entry, text="❌", command=lambda i=index: self.remove_object_path(i),bg='#444654',fg="white")
+            remove_button.pack(side="right")
+
+            self.path_entries.append(path_entry)
+
+    def edit_object_path_metadata(self, id):
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Edit Path")
+
+        new_name_label = tk.Label(edit_window, text="New Name:")
+        new_name_label.pack()
+
+        new_name_entry = tk.Entry(edit_window)
+        new_name_entry.pack()
+
+        save_button = tk.Button(edit_window, text="Save",
+                                command=lambda: self.path_save_edited_metadata(id, new_name_entry.get(), edit_window))
+        save_button.pack()
+
+    def path_save_edited_metadata(self, id, new_name, edit_window):
+
+        self.path_metadata[id]["name"]=new_name
+
+        self.draw_object_paths()
+        edit_window.destroy()
 
 
+    def remove_object_path(self, index):
+        if 0 <= index < len(self.object_pathstore):
+            path,id=self.object_pathstore.pop(index)
+            self.path_metadata.pop(id)
+            self.draw_object_paths()
+    def toggle_object_path_visibility(self):
+        current_visibility = self.canvas.itemcget("paths", "state")
+        new_visibility = "normal" if current_visibility == "hidden" else "hidden"
+        #self.canvas.tag_raise("paths")
+        self.canvas.itemconfigure("paths", state=new_visibility)
 
     def create_texture_buttons(self, parent):
         for index, texture in enumerate(self.texture_data):
@@ -482,7 +632,15 @@ class CanvasApp:
     """self.images+=[new_image]"""
 
     def canvas_left_click(self, event):
-        if self.current_texture:
+        if self.pathfinding_mode:
+            x, y = event.x, event.y
+            self.pathpoints.append((x, y))
+            self.current_path.append((x, y))
+            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red", tags=["paths","temp_paths","#movable"])
+            if len(self.current_path) > 1:
+                self.canvas.create_line(self.current_path[-2], self.current_path[-1], fill="blue", tags=["paths","temp_paths","#movable"])
+
+        elif self.current_texture:
             print(self.current_obj_type)
             x, y = event.x, event.y
 
