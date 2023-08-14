@@ -1,3 +1,151 @@
+import numpy as np
+
+points = [(100, 100), (200, 100), (200, 200), (100, 200)]
+step_width = 5
+runs=20000
+import time
+from functools import wraps
+
+def measure_time(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Function {func.__name__} took {elapsed_time:.6f} seconds to execute.")
+        return result
+    return wrapper
+
+class PathFollowAnimation2:
+    def __init__(self, points, step_width):
+        self.points = points
+        self.step_width = step_width
+        self.current_index = 0
+        self.current_position = self.points[0]
+        self.target_position = self.points[1]
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.current_index >= len(self.points) - 1:
+            raise StopIteration
+
+        direction = (
+            self.target_position[0] - self.current_position[0],
+            self.target_position[1] - self.current_position[1]
+        )
+
+        magnitude = (direction[0] ** 2 + direction[1] ** 2) ** 0.5
+
+        if magnitude <= self.step_width:
+            self.current_index += 1
+            self.current_position = self.target_position
+            if self.current_index < len(self.points) - 1:
+                self.target_position = self.points[self.current_index + 1]
+        else:
+            direction = (direction[0] / magnitude, direction[1] / magnitude)
+            self.current_position = (
+                self.current_position[0] + direction[0] * self.step_width,
+                self.current_position[1] + direction[1] * self.step_width
+            )
+
+        return self.current_position
+
+
+# Example usage
+
+
+
+
+
+
+
+
+
+
+
+
+
+class PathFollowAnimation:    #faster
+    def __init__(self, points, step_width):
+        self.points = points
+        self.step_width = step_width
+        self.current_index = 0
+        self.current_position = self.points[0]
+        self.target_position = self.points[1]
+
+    def move(self):
+        if self.current_index >= len(self.points) - 1:
+            return None  # Animation finished
+
+        # Calculate the direction vector from current position to target
+        direction = (
+            self.target_position[0] - self.current_position[0],
+            self.target_position[1] - self.current_position[1]
+        )
+
+        # Calculate the magnitude of the direction vector
+        magnitude = (direction[0] ** 2 + direction[1] ** 2) ** 0.5
+
+        if magnitude <= self.step_width:
+            # Move directly to the target position
+            self.current_index += 1
+            self.current_position = self.target_position
+            if self.current_index < len(self.points) - 1:
+                self.target_position = self.points[self.current_index + 1]
+        else:
+            # Move by step width towards the target
+            direction = (direction[0] / magnitude, direction[1] / magnitude)
+            self.current_position = (
+                self.current_position[0] + direction[0] * self.step_width,
+                self.current_position[1] + direction[1] * self.step_width
+            )
+
+        return self.current_position
+
+
+@measure_time
+def test1():
+    for i in range(1,runs):
+
+        animation = PathFollowAnimation2(points, step_width)
+
+        for position in animation:
+            p=position
+
+
+
+
+@measure_time
+def test2():   #faster way
+    for i in range(1,runs):
+
+        animation = PathFollowAnimation(points, step_width)
+
+        while True:
+            position = animation.move()
+            if position is None:
+                break
+
+            p = position
+
+
+
+
+test1()
+test2()
+
+
+
+
+
+exit()
+
+
+
+
 import random
 import string
 import tkinter as tk
