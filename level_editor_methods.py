@@ -51,20 +51,25 @@ def createImage(path, x, y, nsa=False, name="", unknown="resources/unknown_plg.p
             StatikImage += [i]
         return i
 
-def returnScrollFrame(master):
-    canvas = tk.Canvas(master, width=200, bg='#333440', highlightthickness=0,)
 
+def returnScrollFrame(master, height):
+    canvas = tk.Canvas(master, width=200, bg='#333440', highlightthickness=0, height=height)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-    scrollbar = ttk.Scrollbar(master=master, command=canvas.yview, )
+    scrollbar = ttk.Scrollbar(master, command=canvas.yview)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    canvas.pack(side=tk.RIGHT, fill=tk.BOTH,expand=True)
 
     canvas.configure(yscrollcommand=scrollbar.set)
 
-    # Create a frame inside the canvas for the scrollable content
     inner_frame = tk.Frame(canvas, bg='#333440')
-    canvas.create_window((0, 0), window=inner_frame, anchor="nw",)
-    return inner_frame
+    canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+
+    def update_scroll_region(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+
+    canvas.bind("<Configure>", update_scroll_region)
+
+    return inner_frame, canvas
 def save_file_dialog():
     root = tk.Tk()
     root.withdraw()  # Hide the main window

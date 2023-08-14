@@ -1,12 +1,15 @@
 import json
 import os
 import random
+import re
 import tkinter
 import tkinter as tk
 from tkinter import filedialog, ttk
 import tkinter.font as tkfont
 from PIL import Image, ImageTk
 from PIL import ImageDraw
+
+from mygame.objects.editWindow import EditWindow
 
 G_WIDTH = 800
 G_HEIGHT = 600
@@ -17,10 +20,13 @@ from level_editor_methods import *
 
 import ui_code
 
-
+"""import sv_ttk"""  # to slow
 class CanvasApp:
     def __init__(self, root):
         self.preview_point = None
+
+
+        #sv_ttk.set_theme("dark")
 
         self.b = None
         self.selected_index = None
@@ -38,15 +44,21 @@ class CanvasApp:
         self.displayimage = None
         self.curant_object_data = {}
         self.root.configure(bg='#333440')
-        self.left_Frame = tk.Frame(root, bg='#333440')
+
+        self.left_Frame =ttk.Frame(root, )#bg='#333440')
         self.left_Frame.pack(side="left", fill="both", expand=True)
-        self.right_Frame = tk.Frame(root, bg='#333440')
+        self.right_Frame =ttk.Frame(root, )#bg='#333440')
         self.right_Frame.pack(side="right", fill="y")
-        can_tool_frame = tk.Frame(self.left_Frame, bg='#333440')
+        top_frame = ttk.LabelFrame(self.left_Frame,labelanchor="w")
+        top_frame.pack(fill="y", side="top", anchor="nw")
+        can_tool_frame =ttk.Frame(self.left_Frame, )#bg='#333440')
         can_tool_frame.pack(expand=True, fill="both")
-        toolFrame = tk.Frame(can_tool_frame, bg='#333440')
+        toolFrame =ttk.Frame(can_tool_frame, )#bg='#333440')
         toolFrame.pack(side="left", anchor="ne")
-        self.canvas = tk.Canvas(can_tool_frame, bg='black')
+
+
+
+        self.canvas =tk.Canvas(can_tool_frame,borderwidth=1,highlightbackground="gray",highlightthickness=1,highlightcolor="gray")
         self.canvas.pack(fill=tk.BOTH, expand=True, side="left")
         self.create_cordnateSystem()
         self.bg_image = None  # Variable to store the background image
@@ -55,33 +67,30 @@ class CanvasApp:
         self.canvas.bind("<Button-3>", self.canvas_right_click)
         self.canvas.bind("<Button-2>", self.canvas_middle_click)
 
-        self.texture_buttons_frame = tk.Frame(self.left_Frame, bg='#333440')
+        self.texture_buttons_frame =ttk.Frame(self.left_Frame, )#bg='#333440')
         self.texture_buttons_frame.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.canvas.bind("<Configure>", self.updatebg)
 
-        f = tk.Frame(self.right_Frame, bg='#333440')
+        f =ttk.Frame(self.right_Frame, )#bg='#333440')
         f.pack(side=tk.TOP, anchor="nw")
 
         self.fill_mode = False
         self.fill_start_x = 0
         self.fill_start_y = 0
 
-        self.fill_button = tk.Button(toolFrame, text="🪣", command=self.toggle_fill_mode, bg='#444654', fg='white',
-                                     font=tkfont.Font(size=12, weight="bold"), relief="flat")
+        self.fill_button =tk.Button(toolFrame, text="🪣", command=self.toggle_fill_mode,bg='#444654', fg='white',
+        font=tkfont.Font(size=12, weight="bold"), relief="flat")
         self.fill_button.pack(side=tk.TOP, anchor="n")
 
         self.rubber_mode = False
         self.rubber_area_id = None
 
-        self.rubber_button = tk.Button(toolFrame, text="🧽", command=self.toggle_rubber_mode, bg='#444654',
-                                       font=tkfont.Font(size=12, weight="bold"), relief="flat",
-                                       fg='white')
+        self.rubber_button =tk.Button(toolFrame, text="🧽", command=self.toggle_rubber_mode,bg='#444654',font=tkfont.Font(size=12, weight="bold"), relief="flat",fg='white')
         self.rubber_button.pack(side=tk.TOP, anchor="n")
 
         root.bind("<Escape>", self.stop_fill)
 
-        self.save_button = tk.Button(self.left_Frame, text="Save", command=self.save_elements, bg='#444654', fg='white')
 
         self.root.bind("<Control-s>", lambda e: self.save_elements())
         self.root.bind("<Control-l>", lambda e: self.load_elements())
@@ -89,7 +98,12 @@ class CanvasApp:
         self.root.bind("<Control-Shift-s>", lambda e: self.save_elements(True))
         self.root.bind("<f>", lambda e: self.toggle_fill_mode())
         self.root.bind("<r>", lambda e: self.toggle_rubber_mode())
-        self.save_button.pack(side=tk.BOTTOM, fill=tk.X)
+
+        self.root.bind("<q>", lambda e:self.toggle_path_craete_mode())
+
+
+        #
+
         self.canvas.bind("<Motion>", self.update_preview)
 
         # Initialize data
@@ -115,7 +129,10 @@ class CanvasApp:
         self.elements = []
 
         style = ttk.Style()
-        style.theme_use("clam")  # Use the "clam" theme for a dark-themed look
+        root.tk.call("source", "ttk_theme/azure.tcl")
+        root.tk.call("set_theme", "dark")
+
+        """style.theme_use("azure")  # Use the "clam" theme for a dark-themed look
         style.configure("TScrollbar",
                         background='#333440',
                         troughcolor="#76818E",
@@ -133,18 +150,18 @@ class CanvasApp:
                   background=[("active", "#444654"), ("!active", "#333")],
                   foreground=[("active", "white"), ("!active", "white")],
                   highlightbackground=[("active", "#333440"), ("!active", "#333")],
-                  highlightcolor=[("active", "#333440"), ("!active", "#333")])
+                  highlightcolor=[("active", "#333440"), ("!active", "#333")])"""
 
         editor_tabs_book = ttk.Notebook(self.right_Frame)
         editor_tabs_book.pack(side="top", fill="both", expand=True)
-
+        self.editor_tabs_book=editor_tabs_book
         # tab 1
-        tab1 = tk.Frame(editor_tabs_book)
+        tab1 =ttk.Frame(editor_tabs_book)
 
-        tap_paths = tk.Frame(editor_tabs_book, bg="#444654")
+        tap_paths =ttk.Frame(editor_tabs_book,)# bg="#444654")
 
         # can
-        canvas = tk.Canvas(tab1, width=200, bg='#333440', highlightthickness=0)
+        canvas =tk.Canvas(tab1, width=200, bg='#333440', highlightthickness=0)
 
         editor_tabs_book.add(tab1, text="Elements",
                              image=createImage("imgs/editor/editor_element_tab.png", 16, 16, name="elements_tab_icon"))
@@ -159,7 +176,7 @@ class CanvasApp:
         canvas.configure(yscrollcommand=scrollbar.set)
 
         # Create a frame inside the canvas for the scrollable content
-        inner_frame = tk.Frame(canvas, bg='#333440')
+        inner_frame =ttk.Frame(canvas, )#bg='#333440')
         canvas.create_window((0, 0), window=inner_frame, anchor="nw")
 
         # Configure the canvas to adjust scroll region when resized
@@ -177,12 +194,15 @@ class CanvasApp:
 
         # self.populate_texture_listbox()
         self.create_texture_buttons()
-        self.load_button = tk.Button(self.left_Frame, text="Load", command=self.load_elements, bg='#444654', fg='white')
-        self.load_button.pack(side=tk.BOTTOM, fill=tk.X)
+        self.save_button = tk.Button(top_frame, text="Save",
+                                      command=self.save_elements, bg='#343540', fg='white',relief="flat")
+        self.save_button.pack(side=tk.LEFT,)
 
-        self.select_bg_button = tk.Button(self.left_Frame, text="Select Background Image", command=self.select_bg_image,
-                                          bg='#444654', fg='white')
-        self.select_bg_button.pack(side=tk.BOTTOM, fill=tk.X)
+        self.load_button =tk.Button(top_frame, text="Load", command=self.load_elements,bg='#444654', fg='white',relief="flat")
+        self.load_button.pack(side=tk.LEFT,)
+
+        self.select_bg_button =tk.Button(top_frame, text="Select Background Image", command=self.select_bg_image,relief="flat",bg='#343540', fg='white')
+        self.select_bg_button.pack(side=tk.LEFT)
 
         self.uids = set()
         # path data
@@ -197,10 +217,10 @@ class CanvasApp:
         self.path_entries = []
         self.pathfinding_mode = False
 
-        checked_state = tk.BooleanVar()
+        checked_state =tk.BooleanVar()
         checked_state.set(True)
 
-        grid_enabled_state = tk.BooleanVar()
+        grid_enabled_state =tk.BooleanVar()
 
         def on_grid_en_disable_click():
             if grid_enabled_state.get():
@@ -218,7 +238,7 @@ class CanvasApp:
 
             self.canvas.itemconfigure("paths", state=new_visibility)
 
-        checkboxes_frame = tk.LabelFrame(tap_paths, bg='#333440', text="Options")
+        checkboxes_frame =ttk.LabelFrame(tap_paths, text="Options")
         checkboxes_frame.pack(fill="x", anchor="ne")
 
         checkbox = ttk.Checkbutton(checkboxes_frame, text="Show Paths", variable=checked_state,
@@ -230,14 +250,24 @@ class CanvasApp:
 
         checkbox_use_grid_for_paths.pack(anchor="nw", pady=(4, 4), padx=(0, 10), side="right")
 
-        self.toggle_pathEdit_on_button = tk.Button(tap_paths, text="+ Create New path",
-                                                   command=self.toggle_path_craete_mode, bg='#333440', fg="white")
+        self.toggle_pathEdit_on_button =ttk.Button(tap_paths, text="+ Create New path",
+                                                   command=self.toggle_path_craete_mode, )
         self.toggle_pathEdit_on_button.pack(anchor="nw", pady=(4, 4), padx=(10, 0))
 
-        r = tk.LabelFrame(tap_paths, bg='#333440', text="Courant Paths", font=tkfont.Font(size=10), fg="white")
-        r.pack(fill="both")
+        f, scrollCan=returnScrollFrame(tap_paths, 500)
+        r =ttk.LabelFrame(f, text="Courant Paths", )#font=tkfont.Font(size=10))
+        r.pack()
+        self.pathInfo_overviewList_frame =r
 
-        self.pathInfo_overviewList_frame = returnScrollFrame(r)
+
+        last_height=0
+        """def updateScrollList(e):
+            nonlocal last_height
+            if last_height!=e.height:
+                last_height=e.height
+                scrollCan.configure(height=e.height-400)
+
+        tap_paths.bind("<Configure>",updateScrollList)"""
 
         # Configure the canvas to adjust scroll region when resized
         def on_configure(event):
@@ -246,12 +276,12 @@ class CanvasApp:
 
         inner_frame.bind("<Configure>", on_configure)
 
-        L = tk.Label(self.pathInfo_overviewList_frame, text="No Paths Created yet", bg='#333440', fg="white")
+        L =ttk.Label(self.pathInfo_overviewList_frame, text="No Paths Created yet",)# bg='#333440', fg="white")
         L.pack()
         self.path_entries += [L]
         self.pathInfo_overviewList_frame.pack(padx=10, pady=10, fill="both")
 
-        """self.toggle_visibility_button = tk.Button(tap_paths, text="Toggle Visibility",
+        """self.toggle_visibility_button =ttk.Button(tap_paths, text="Toggle Visibility",
                                                   command=self.toggle_object_path_visibility)
         self.toggle_visibility_button.pack()"""
 
@@ -264,14 +294,16 @@ class CanvasApp:
         else:
             self.toggle_pathEdit_on_button.config(text="+ Create New Path")
             if self.current_path:
-                id = self.gen_uuid()
+                if len(self.current_path) >= 2:
+                    id = self.gen_uuid()
 
-                self.path_metadata[id] = {"name": "New Path", "data": {}, "color": "#0FA3B1"}
-                self.object_pathstore.append((self.current_path, id))
-                self.path_position_offset[id] = self.path_position_offset["$curant"]
-                self.path_position_offset["$curant"] = []
-                self.current_path = []
-            self.draw_object_paths()
+                    self.path_metadata[id] = {"name": "New Path", "data": {}, "color": "#0FA3B1","type":"None"}
+                    self.object_pathstore.append((self.current_path, id))
+                    self.path_position_offset[id] = self.path_position_offset["$curant"]
+                    self.path_position_offset["$curant"] = []
+
+                    self.current_path = []
+                self.draw_object_paths()
 
     def gen_uuid(self):
 
@@ -284,7 +316,26 @@ class CanvasApp:
     def draw_object_paths(self):
         self.canvas.delete("temp_paths")
         self.canvas.delete("paths")
-        for path, id in self.object_pathstore:
+        def path_add_object_ofset():
+            paths = []
+            for n, points_pack in enumerate(self.object_pathstore):
+                points, id = points_pack
+                paths.append([[], id])
+                if self.path_position_offset[id] is not None:
+                    ofsets = self.path_position_offset[id]
+                    print(self.path_position_offset)
+
+                    for n2, p in enumerate(points):
+                        o = ofsets[n2]
+                        paths[n][0] += [(p[0] - o[0]+self.ofset_x, p[1] - o[1]+self.ofset_y)]
+                else:
+                    for n2, p in enumerate(points):
+                        paths[n][0] += [(p[0], p[1])]
+            return paths
+
+        for path, id in path_add_object_ofset():
+
+
             metadata = self.path_metadata[id]
             self.canvas.create_line(path[0], path[0 + 1], fill=metadata["color"], tags=["paths", "#movable"])
 
@@ -305,7 +356,7 @@ class CanvasApp:
         # Create path entries in the list frame
         for index, path_pac in enumerate(self.object_pathstore):
             path, id = path_pac
-            path_entry = tk.Frame(self.pathInfo_overviewList_frame, bg='#333440')
+            path_entry =ttk.Frame(self.pathInfo_overviewList_frame, )#'#333440')
             print(path)
             print(self.path_labels)
             """
@@ -317,43 +368,57 @@ class CanvasApp:
 
             path_entry.pack(fill="x")
 
-            number_label = tk.Label(path_entry, text=f"{index + 1}.", width=3, anchor="w", bg='#444654', fg="white")
+            number_label =ttk.Label(path_entry, text=f"{index + 1}.", width=3, anchor="w", )#bg='#444654', fg="white")
             number_label.pack(side="left")
 
-            name_label = tk.Label(path_entry, text=self.path_metadata[id]["name"], width=15, anchor="w", bg='#444654',
-                                  fg="white")
+            name_label =ttk.Label(path_entry, text=self.path_metadata[id]["name"], width=15, anchor="w", )#bg='#444654',
+                                  #fg="white")
             name_label.pack(side="left")
 
-            edit_button = tk.Button(path_entry, text="Edit", command=lambda i=index: self.edit_object_path_metadata(id),
-                                    bg='#444654', fg="white")
+            edit_button =tk.Button(path_entry, text="✎",width=1, command=lambda i=index,idd=id: self.edit_object_path_metadata(idd),
+                                    bg='#444654', fg="white",relief="flat")
             edit_button.pack(side="right")
 
-            remove_button = tk.Button(path_entry, text="❌", command=lambda i=index: self.remove_object_path(i),
-                                      bg='#444654', fg="white")
-            remove_button.pack(side="right")
+            remove_button =tk.Button(path_entry, text="❌",width=1 ,command=lambda i=index: self.remove_object_path(i),
+                                      bg='#444654', fg="white",relief="flat")
+            remove_button.pack(side="right",padx=(0,1))
 
             self.path_entries.append(path_entry)
 
     def edit_object_path_metadata(self, id):
-        edit_window = tk.Toplevel(self.root)
-        edit_window.title("Edit Path")
+        data_dict = self.path_metadata[id]
+        f=ttk.Frame(self.editor_tabs_book)
 
-        new_name_label = tk.Label(edit_window, text="New Name:")
-        new_name_label.pack()
+        self.last_tab=self.editor_tabs_book.index(tkinter.CURRENT)
 
-        new_name_entry = tk.Entry(edit_window)
-        new_name_entry.pack()
+        i=self.editor_tabs_book.add(f, text="Elements",
+                             image=createImage("imgs/editor/element_edit.png", 16, 16, name="edit_element_section_icon"))
 
-        save_button = tk.Button(edit_window, text="Save",
-                                command=lambda: self.path_save_edited_metadata(id, new_name_entry.get(), edit_window))
-        save_button.pack()
 
-    def path_save_edited_metadata(self, id, new_name, edit_window):
+        self.editor_tabs_book.select(f)
 
-        self.path_metadata[id]["name"] = new_name
+
+        edit_window = EditWindow(f, data_dict.copy(), lambda data,save,idv=id,ti=f: self.path_save_edited_metadata(idv, data,ti,save))
+
+
+    def path_save_edited_metadata(self, id, data,tab_id,save_changes):
+        self.editor_tabs_book.forget(tab_id)
+
+        self.editor_tabs_book.select(self.last_tab)
+        def is_valid_color_hex(input_string):
+            pattern = re.compile(r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$')
+            return bool(pattern.match(input_string))
+
+        self.path_metadata[id]["name"] = data["name"]
+        color=data["color"]
+        v=is_valid_color_hex(color)
+        if v:
+
+            self.path_metadata[id]["color"] =color
+        self.path_metadata["type"]=data["type"]
 
         self.draw_object_paths()
-        edit_window.destroy()
+
 
     def update_preview(self, event):
         if self.pathfinding_mode:
@@ -387,15 +452,15 @@ class CanvasApp:
             row = index // 3
             col = index % 3
 
-            texture_frame = tk.Frame(parent, bg='#333440')
+            texture_frame =ttk.Frame(parent, )#bg='#333440')
             texture_frame.grid(row=row, column=col, padx=5, pady=5)
 
-            image = tk.PhotoImage(file=texture["path"])
-            image_label = tk.Label(texture_frame, image=image, bg='#333440')
+            image =ttk.PhotoImage(file=texture["path"])
+            image_label =ttk.Label(texture_frame, image=image, )#bg='#333440')
             image_label.image = image
             image_label.pack()
 
-            name_label = tk.Label(texture_frame, text=texture["name"], bg='#333440', fg='white')
+            name_label =ttk.Label(texture_frame, text=texture["name"], )#bg='#333440', fg='white')
             name_label.pack()
 
     def create_texture_buttons(self):
@@ -406,7 +471,7 @@ class CanvasApp:
             t = texture
             col = index % 2
 
-            texture_frame = tk.Frame(self.texture_buttons_frame, bg='#333440')
+            texture_frame =tk.Frame(self.texture_buttons_frame, bg='#333440')
             texture_frame.grid(row=row, column=col, padx=5, pady=5)
 
             def selectItem(texture_frame, texture, namelabel):
@@ -427,7 +492,7 @@ class CanvasApp:
                 self.current_texture = texture["path"]
 
             image = createImage(texture["path"], 25, 25, name=texture["path"].split("/")[-1])
-            image_label = tk.Label(texture_frame, image=image, bg='#333440')
+            image_label =tk.Label(texture_frame, image=image, bg='#333440')
 
             image_label.image = image
             image_label.pack()
@@ -436,7 +501,7 @@ class CanvasApp:
             if len(texture["name"]) > 15:
                 pr = pr[:12] + "..."
 
-            name_label = tk.Label(texture_frame, text=pr, bg='#333440', fg='white', width=12, anchor="w")
+            name_label =tk.Label(texture_frame, text=pr, bg='#333440', fg='white', width=12, anchor="w")
             name_label.bind("<Button-1>", lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
 
             image_label.bind("<Button-1>",
@@ -513,7 +578,8 @@ class CanvasApp:
             element["id"] = id
             self.elements += [element]
         self.canvas.tag_raise("coordinate_labels")  # , "coordinate_labels")
-
+        self.path_metadata={}
+        self.path_position_offset={"$curant":[]}
         self.object_pathstore = level_json["paths"]
         for path, id in self.object_pathstore:
             self.path_position_offset[id] = None
@@ -613,7 +679,13 @@ class CanvasApp:
     """self.images+=[new_image]"""
 
     def canvas_left_click(self, event):
-        if self.pathfinding_mode:
+        self.get_Id_by_Click(event)
+        if self.select_object_path_bind_mode:
+
+
+
+
+        elif self.pathfinding_mode:
             x, y = event.x, event.y
             if (self.path_grid_mode == "grid"):
                 x = (x // self.grid_spacing) * self.grid_spacing + 25
@@ -674,6 +746,18 @@ class CanvasApp:
             self.elements = [element for element in self.elements if element["id"] != selected_element[0]]
             if hasattr(self, 'selected_element') and self.selected_element == selected_element[0]:
                 self.selected_label.config(text="Selected: None")
+
+    def get_Id_by_Click(self,event):
+
+        selected_element = self.canvas.find_closest(event.x, event.y)
+        if selected_element[0] in self.protected_elements:
+            return
+        if selected_element:
+
+            print(self.elements)
+            e = [element for element in self.elements if element["id"] == selected_element[0]]
+
+            return e[0]
 
     def canvas_middle_click(self, event):
         print("fdsfdsfsda")
@@ -809,6 +893,6 @@ class fake_event():
         self.x, self.y = x, y
 
 
-root = tk.Tk()
+root =tk.Tk()
 app = CanvasApp(root)
 root.mainloop()

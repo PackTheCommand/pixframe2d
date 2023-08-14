@@ -1,11 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
 
-
 class EditWindow:
     def __init__(self, root, data_dict, ret_function):
         self.root = root
-        self.root.title("Edit Window")
+
 
         self.data_dict = data_dict
         self.ret_function = ret_function
@@ -20,8 +19,8 @@ class EditWindow:
         self.root.tk_setPalette(background="#2E2E2E", foreground="white", activeBackground="#4E4E4E",
                                 activeForeground="white")
 
-        style = ttk.Style()
-        style.theme_use("clam")
+        """style = ttk.Style()
+        style.theme_use("")
         style.map("Custom.TEntry",
                   background=[("active", "#2E2E2E"), ("!active", "#333333"), ("disabled", "#444444")],
                   fieldbackground=[("active", "#2E2E2E"), ("!active", "#333333"), ("disabled", "#444444")],
@@ -33,10 +32,12 @@ class EditWindow:
                   foreground=[("active", "white"), ("!active", "white")])
 
         style.configure("Dark.TEntry", bordercolor="#444444")
-        style.configure("Dark.TCheckbutton", bordercolor="#2E2E2E")
+        style.configure("Dark.TCheckbutton", bordercolor="#2E2E2E")"""
 
     def setup_ui(self):
-        self.root.configure(bg="#2E2E2E")  # Dark background color
+        save_button = ttk.Button(self.root, text="✖",width=2, command=lambda :self.save_and_close(False), style="Dark.TButton")
+        save_button.pack(side="top",anchor="ne")
+
 
         name_label = ttk.Label(self.root, text="Name:", foreground="white", background="#2E2E2E")
         name_label.pack()
@@ -63,24 +64,10 @@ class EditWindow:
         save_button = ttk.Button(self.root, text="Save", command=self.save_and_close, style="Dark.TButton")
         save_button.pack()
 
-    def save_and_close(self):
+
+    def save_and_close(self,save=True):
         self.data_dict["name"] = self.name_var.get()
         self.data_dict["color"] = self.color_var.get()
         self.data_dict["type"] = self.type_var.get()
 
-        self.ret_function(self.data_dict)
-        self.root.destroy()
-
-
-# Example usage
-def ret_function(updated_data):
-    print("Updated Data:", updated_data)
-
-
-root = tk.Tk()
-style = ttk.Style(root)
-style.configure("Dark.TButton", background="#333333", foreground="white", bordercolor="#444444")
-
-data_dict = {"name": "test", "color": "#ffffff", "type": "moveline"}
-edit_window = EditWindow(root, data_dict, ret_function)
-root.mainloop()
+        self.ret_function(self.data_dict,save)
