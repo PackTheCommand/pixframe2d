@@ -343,15 +343,7 @@ class CanvasApp:
             for n, points_pack in enumerate(self.object_pathstore):
                 points, id = points_pack
                 paths.append([[], id])
-                if self.path_position_offset[id] is not None:
-                    ofsets = self.path_position_offset[id]
-                    print(self.path_position_offset)
-
-                    for n2, p in enumerate(points):
-                        o = ofsets[n2]
-                        paths[n][0] += [(p[0] - o[0]+self.ofset_x, p[1] - o[1]+self.ofset_y)]
-                else:
-                    for n2, p in enumerate(points):
+                for n2, p in enumerate(points):
                         paths[n][0] += [(p[0]+self.ofset_x, p[1]+self.ofset_y)]
             return paths
 
@@ -756,13 +748,13 @@ class CanvasApp:
                 mx,my=box_x+point_x,box_y+point_y
                 #
                 self.canvas.move(can_element_id, -25-box_x+  # zurück move nach 0,0
-                                 (point_x+map_ofset_x)   # move zum punkt
-                                 ,-25-box_y+(point_y+map_ofset_y))
+                                 (point_x-map_ofset_x)   # move zum punkt
+                                 ,-25-box_y+(point_y-map_ofset_y))
 
 
                 #self.canvas.move(can_element_id,mx,my)
 
-                el["x"], el["y"]=point_x+map_ofset_x-25,point_y+map_ofset_y-25
+                el["x"], el["y"]=point_x-25,point_y-25
 
 
 
@@ -792,12 +784,19 @@ class CanvasApp:
 
             # self.pathpoints.append((x, y))
 
-            self.current_path.append((x, y))
-            self.path_position_offset["$curant"] += [(self.ofset_x, self.ofset_y)]
+
+            self.current_path.append((x-self.ofset_x, y-self.ofset_y))
+            self.path_position_offset["$curant"] += [(0,0)]
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red", tags=["paths", "temp_paths", "#movable"])
             if len(self.current_path) > 1:
-                self.canvas.create_line(self.current_path[-2], self.current_path[-1], fill="blue",
+                ox,oy=self.last_ofset
+                pa,pb=self.last_point
+                print("diference",(self.ofset_x+ox))
+
+                self.canvas.create_line((pa+(self.ofset_x+ox),pb+(self.ofset_y+oy)),(self.current_path[-1][0]+self.ofset_x,self.current_path[-1][1]+self.ofset_y), fill="blue",
                                         tags=["paths", "temp_paths", "#movable"])
+            self.last_ofset=(-self.ofset_x,-self.ofset_y)
+            self.last_point=(x,y)
 
         elif self.current_texture:
             print(self.current_obj_type)
