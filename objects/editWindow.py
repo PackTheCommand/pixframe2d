@@ -11,6 +11,8 @@ class EditWindow:
 
         self.name_var = tk.StringVar(value=data_dict.get("name", ""))
         self.color_var = tk.StringVar(value=data_dict.get("color", ""))
+        self.speed_var = tk.DoubleVar(value=data_dict.get("speed", 1.0))  # Default speed is 1.0
+
         self.type_var = tk.StringVar(value=data_dict.get("type", ""))
         self.setup_styles()
         self.setup_ui()
@@ -33,6 +35,7 @@ class EditWindow:
 
         style.configure("Dark.TEntry", bordercolor="#444444")
         style.configure("Dark.TCheckbutton", bordercolor="#2E2E2E")"""
+
 
     def setup_ui(self):
         save_button = ttk.Button(self.root, text="✖",width=2, command=lambda :self.save_and_close(False), style="Dark.TButton")
@@ -57,9 +60,27 @@ class EditWindow:
         type_combobox = ttk.Combobox(self.root, textvariable=self.type_var, values=['moveline', 'actionline', 'None'])
         type_combobox.pack()
 
-        check_var = tk.BooleanVar()
+        speed_label = ttk.Label(self.root, text="Animation Speed:", foreground="white", background="#2E2E2E")
+        speed_label.pack()
+
+        speed_slider_frame = ttk.Frame(self.root)
+        speed_slider_frame.pack()
+
+        speed_label = ttk.Label(speed_slider_frame, text="0.1", foreground="white", background="#2E2E2E")
+        speed_label.pack(side="top")
+
+        def update_speed_label(self, value):
+
+            speed_label.configure(text=str(round(float(value),2)))
+
+        speed_slider = ttk.Scale(speed_slider_frame, from_=0.1, to=10.0, variable=self.speed_var, orient="horizontal",
+                                 length=200, command=lambda e:update_speed_label(self, e))
+        speed_slider.pack(side="bottom")
+
+
+        """check_var = tk.BooleanVar()
         check_button = ttk.Checkbutton(self.root, text="Enable", variable=check_var, style="Dark.TCheckbutton")
-        check_button.pack()
+        check_button.pack()"""
 
         save_button = ttk.Button(self.root, text="Save", command=self.save_and_close, style="Dark.TButton")
         save_button.pack()
@@ -69,5 +90,7 @@ class EditWindow:
         self.data_dict["name"] = self.name_var.get()
         self.data_dict["color"] = self.color_var.get()
         self.data_dict["type"] = self.type_var.get()
+        self.data_dict["speed"] = round(self.speed_var.get(),3)
 
-        self.ret_function(self.data_dict,save)
+        self.ret_function(self.data_dict, save)
+

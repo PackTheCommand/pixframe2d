@@ -319,7 +319,7 @@ class CanvasApp:
                 if len(self.current_path) >= 2:
                     id = self.gen_uuid()
 
-                    self.path_metadata[id] = {"name": "New Path", "data": {}, "color": "#0FA3B1","type":"None"}
+                    self.path_metadata[id] = {"name": "New Path", "data": {}, "color": "#0FA3B1","type":"moveline","speed":1.0}
                     self.object_pathstore.append((self.current_path, id))
                     self.path_position_offset[id] = self.path_position_offset["$curant"]
                     self.path_position_offset["$curant"] = []
@@ -449,7 +449,9 @@ class CanvasApp:
         if v:
 
             self.path_metadata[id]["color"] =color
-        self.path_metadata["type"]=data["type"]
+        self.path_metadata[id]["type"]=data["type"]
+        self.path_metadata[id]["speed"]=data["speed"]
+
 
         self.draw_object_paths()
 

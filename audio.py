@@ -16,6 +16,7 @@ def pauseAll():
 
 
 
+
 class sound:
     jump_sound=addSound("jump.mp3")
     jump_sound.set_volume(0.09)

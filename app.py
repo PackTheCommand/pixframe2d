@@ -13,7 +13,7 @@ from pygame import K_UP, K_DOWN, K_LEFT, K_RIGHT
 from engene import GameRenderLoop
 from ui_elements import Button, TextInput, Checkbox
 
-
+import movable_objects
 
 def setingsMenue(render_loop):
     def clear_content():
@@ -238,11 +238,11 @@ daeth_areas = []
 currant_game_file = ""
 backgroundMusic=None
 
-def startGame(path=None):
+def startGame(path_uuid=None):
     global player, player_surf, currant_game_file,backgroundMusic
-    if path == None:
-        path = currant_game_file
-    currant_game_file = path
+    if path_uuid == None:
+        path_uuid = currant_game_file
+    currant_game_file = path_uuid
     backgroundMusic=sound.music_communicate
     loopsound(sound.music_communicate)
 
@@ -253,11 +253,14 @@ def startGame(path=None):
 
     player_surf = render_loop.getSurface(player)
 
-    with open(path + ".levdat") as f:
+    with open(path_uuid + ".levdat") as f:
 
         level = json.load(f)
 
+    level_store_uid_to_Elementid={}
+
     def genLevel(level):
+        nonlocal level_store_uid_to_Elementid
         global colidebles, level_store
 
         level_store = []
@@ -269,6 +272,7 @@ def startGame(path=None):
                     colidebles[render_loop.getSurface(i)] = i
 
                 level_store.append(i)
+                level_store_uid_to_Elementid[e["uuid"]]=i
             elif e["type"] == "spawn":
                 render_loop.moveto(player, e["x"], e["y"])
             elif e["type"] == "bg_image":
@@ -292,7 +296,36 @@ def startGame(path=None):
 
         return colidebles
 
-    ll = genLevel(level)
+    ll = genLevel(level["elements"])
+    movable_objects.clear_animation_list()
+    render_loop.clear_scedue()
+    for path_uuid in level["path-metadata"]:
+        path_meta=level["path-metadata"][path_uuid]
+
+        if not path_meta:
+            continue
+        print("path_meta",path_meta)
+        print("path", path_uuid, path_meta["data"])
+        if path_meta["type"]=="moveline":
+
+            if "bound_to" in path_meta["data"]:
+
+                path_data=[p for p in level["paths"] if p[1] == path_uuid]
+
+                print("path_data",path_data)
+                bound_to=path_meta["data"]["bound_to"]
+                print(path_meta)
+                if len(path_data)>0:
+                    anima=movable_objects.PathFollowAnimation(path_data[0][0],1*path_meta["speed"],True)
+                    print("addet animation")
+                    movable_objects.addAnimatedObject(render_loop, level_store_uid_to_Elementid[bound_to], anima)
+
+
+
+    render_loop.set_scedue(movable_objects.run_animation)
+
+
+
 
 
 def move(xp,sprint=False):
@@ -680,11 +713,15 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
 
         gravity()
         jump_s()
+
         move(x,sprinting)
         px, py = render_loop.getXY(player)
         c1, c2 = calculate_map_correction(SCREEN_WIDTH, SCREEN_HEIGHT, 200, 200, px + render_loop.map_ofset_x,
                                           py + render_loop.map_ofset_y)
         # print(render_loop.getXY(player),)
+        a1 = check_if_collisions(player_surf, x, y + 6, colidebles)
+        if a1:
+            move(player,px,py+4 )
 
         render_loop.mod_map_ofset(-c1, c2)
         # print(check_death_areas(px,py),daeth_areas)

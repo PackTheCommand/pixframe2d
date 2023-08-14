@@ -185,7 +185,8 @@ class GameRenderLoop:
         print("addet",func)
         self.scedue_queue+=[func]
 
-
+    def clear_scedue(self):
+        self.scedue_queue=[]
     def show(self, element_id):
         if element_id in self.hidden_elements:
             if element_id in self.hidden_elements:
