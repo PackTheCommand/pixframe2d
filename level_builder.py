@@ -23,6 +23,9 @@ import ui_code
 """import sv_ttk"""  # to slow
 class CanvasApp:
     def __init__(self, root):
+        self.select_object_path_bind_mode = False
+
+        self.tempANY_store=None
         self.preview_point = None
 
 
@@ -254,6 +257,13 @@ class CanvasApp:
                                                    command=self.toggle_path_craete_mode, )
         self.toggle_pathEdit_on_button.pack(anchor="nw", pady=(4, 4), padx=(10, 0))
 
+        self.buttons={}
+
+        bindPath_button=ttk.Button(tap_paths,text="Bind Path",command=self.but_path_bind_mode)
+
+        self.buttons["bindPath_button"]=bindPath_button
+        bindPath_button.pack()
+
         f, scrollCan=returnScrollFrame(tap_paths, 500)
         r =ttk.LabelFrame(f, text="Courant Paths", )#font=tkfont.Font(size=10))
         r.pack()
@@ -285,6 +295,18 @@ class CanvasApp:
                                                   command=self.toggle_object_path_visibility)
         self.toggle_visibility_button.pack()"""
 
+    def but_path_bind_mode(self):
+        if self.select_object_path_bind_mode==0:
+            self.buttons["bindPath_button"].configure(text="Exit binding")
+            self.select_object_path_bind_mode=1
+        else:
+            self.buttons["bindPath_button"].configure(text="Bind Path")
+            self.select_object_path_bind_mode=0
+
+    def setPathAsBind(self,uid):
+        if self.select_object_path_bind_mode==1:
+            self.path_to_bind=uid
+            self.select_object_path_bind_mode=2
     # path methods
     def toggle_path_craete_mode(self):
         self.pathfinding_mode = not self.pathfinding_mode
@@ -330,13 +352,15 @@ class CanvasApp:
                         paths[n][0] += [(p[0] - o[0]+self.ofset_x, p[1] - o[1]+self.ofset_y)]
                 else:
                     for n2, p in enumerate(points):
-                        paths[n][0] += [(p[0], p[1])]
+                        paths[n][0] += [(p[0]+self.ofset_x, p[1]+self.ofset_y)]
             return paths
 
         for path, id in path_add_object_ofset():
 
 
             metadata = self.path_metadata[id]
+
+
             self.canvas.create_line(path[0], path[0 + 1], fill=metadata["color"], tags=["paths", "#movable"])
 
             self.canvas.create_oval(path[0][0] - 4, path[0][1] - 4, path[0][0] + 4, path[0][1] + 4, fill="yellow",
@@ -351,6 +375,7 @@ class CanvasApp:
 
         for entry in self.path_entries:
             entry.destroy()
+
         self.path_entries = []
 
         # Create path entries in the list frame
@@ -366,14 +391,31 @@ class CanvasApp:
 
                     """
 
-            path_entry.pack(fill="x")
 
-            number_label =ttk.Label(path_entry, text=f"{index + 1}.", width=3, anchor="w", )#bg='#444654', fg="white")
+
+            path_entry.pack(fill="x")
+            if "bound_to" in self.path_metadata[id]["data"]:
+                print(self.elements)
+                e = [element for element in self.elements if element["uuid"] == self.path_metadata[id]["data"]["bound_to"]]
+                print(e)
+                print("b",self.path_metadata[id]["data"]["bound_to"])
+                if (e):
+                    number_label = ttk.Label(path_entry, text=f"⛓️", width=3,
+                                             anchor="w", )  # bg='#444654', fg="white")
+                else:
+                    number_label = ttk.Label(path_entry, text=f"{index + 1}.", width=3,
+                                             anchor="w", )  # bg='#444654', fg="white")
+                    self.path_metadata[id]["data"].pop("bound_to")
+                    print("removed")
+            else:
+
+                number_label =ttk.Label(path_entry, text=f"{index + 1}.", width=3, anchor="w", )#bg='#444654', fg="white")
             number_label.pack(side="left")
 
             name_label =ttk.Label(path_entry, text=self.path_metadata[id]["name"], width=15, anchor="w", )#bg='#444654',
                                   #fg="white")
             name_label.pack(side="left")
+            name_label.bind("<Button-1>",lambda e,uid=id:self.setPathAsBind(uid))
 
             edit_button =tk.Button(path_entry, text="✎",width=1, command=lambda i=index,idd=id: self.edit_object_path_metadata(idd),
                                     bg='#444654', fg="white",relief="flat")
@@ -617,6 +659,11 @@ class CanvasApp:
                 self.canvas.delete(element_id)
                 self.elements = [element for element in self.elements if element["id"] != element_id]
 
+                # unbinds paths if there
+                id = [element for element in self.path_metadata if self.path_metadata[element]["data"]["bound_to"] == element_id]
+                if id:
+                    self.path_metadata[id[0]]["data"].pop("bound_to")
+
     def stop_rubber(self):
         self.canvas.delete(self.rubber_area_id)
         self.canvas.unbind("<B1-Motion>")
@@ -678,9 +725,61 @@ class CanvasApp:
 
     """self.images+=[new_image]"""
 
+
+    def final_bind_element_to_path(self):
+        element_uid,can_element_id = self.tempANY_store
+        path_uid=self.path_to_bind
+        self.path_metadata[path_uid]["data"]["bound_to"]=element_uid
+        self.select_object_path_bind_mode=0
+        self.draw_object_paths()
+        self.buttons["bindPath_button"].configure(text="Start binding")
+        e = [element for element in self.elements if element["uuid"] == self.path_metadata[path_uid]["data"]["bound_to"]]
+        if e:
+            el=e[0]
+            op=[path for path in self.object_pathstore if path[1] == path_uid]
+            if op:
+                p=op[0][0][0]
+                print(p)
+
+                point_x, point_y = p[0] , p[1]
+                o=self.path_position_offset[path_uid]
+                if o:
+
+                    map_ofset_x, map_ofset_y = self.ofset_x-o[0][0], self.ofset_y-o[0][1]
+
+                else:
+
+                    map_ofset_x, map_ofset_y = self.ofset_x, self.ofset_y
+
+                box_x,box_y=el["x"]-map_ofset_x, el["y"]-map_ofset_y
+
+                mx,my=box_x+point_x,box_y+point_y
+                #
+                self.canvas.move(can_element_id, -25-box_x+  # zurück move nach 0,0
+                                 (point_x+map_ofset_x)   # move zum punkt
+                                 ,-25-box_y+(point_y+map_ofset_y))
+
+
+                #self.canvas.move(can_element_id,mx,my)
+
+                el["x"], el["y"]=point_x+map_ofset_x-25,point_y+map_ofset_y-25
+
+
+
+
+
+
+
+
     def canvas_left_click(self, event):
-        self.get_Id_by_Click(event)
-        if self.select_object_path_bind_mode:
+
+        if self.select_object_path_bind_mode==2:
+            e,can_element_id=self.get_Id_by_Click(event)
+            if e:
+                self.tempANY_store=e[0]["uuid"],can_element_id
+                self.select_object_path_bind_mode=3
+                self.final_bind_element_to_path()
+
 
 
 
@@ -706,15 +805,6 @@ class CanvasApp:
 
             snapped_x = round((x - 25 - self.ofset_x) / self.grid_size) * self.grid_size + self.ofset_x
             snapped_y = round((y - 25 - self.ofset_y) / self.grid_size) * self.grid_size + self.ofset_y
-
-            """ snapped_x = (x + grid_offset_x) // self.grid_size * self.grid_size
-            snapped_y = (y + grid_offset_y) // self.grid_size * self.grid_size"""
-
-            """grid_offset_x = self.grid_size-(self.ofset_x%self.grid_size)
-            grid_offset_y = self.grid_size-(self.ofset_y%self.grid_size)
-
-            snapped_x = ((x+grid_offset_x)//self.grid_size)*self.grid_size
-            snapped_y = ((y+grid_offset_y)//self.grid_size)*self.grid_size"""
 
             # print(snapped_x+grid_offset_x)
             print(snapped_x, x)
@@ -757,7 +847,7 @@ class CanvasApp:
             print(self.elements)
             e = [element for element in self.elements if element["id"] == selected_element[0]]
 
-            return e[0]
+            return e,selected_element
 
     def canvas_middle_click(self, event):
         print("fdsfdsfsda")
@@ -807,7 +897,9 @@ class CanvasApp:
                     {"elements": [{"type": "bg_image", "texture": self.bg_image_path}] + self.elements, "paths": pp,
                      "path-metadata": self.path_metadata}, f)
             else:
-                json.dump(self.elements, f)
+                json.dump(
+                    {"elements":  self.elements, "paths": pp,
+                     "path-metadata": self.path_metadata}, f)
 
     def toggle_fill_mode(self):
         self.fill_mode = not self.fill_mode

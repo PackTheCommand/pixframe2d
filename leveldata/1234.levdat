@@ -1,0 +1,1 @@
+{"elements": [{"id": 84, "type": "object", "texture": "imgs/blocks/acacia_planks.png", "x": 233, "y": 204, "collision": true, "width": 50, "height": 50, "tags": [], "uuid": "93954"}], "paths": [[[[208, 179], [330, 453]], "c14bd"]], "path-metadata": {"c14bd": {"name": "New Path", "data": {"bound_to": "93954"}, "color": "#0FA3B1", "type": "None"}}}

@@ -1,0 +1,1 @@
+{"elements": [{"id": 84, "type": "object", "texture": "imgs/blocks/birch_planks.png", "x": 149, "y": 47, "collision": true, "width": 50, "height": 50, "tags": [], "uuid": "4cc9e"}], "paths": [[[[174, 72], [148, 295]], "d242c"]], "path-metadata": {"d242c": {"name": "New Path", "data": {"bound_to": "4cc9e"}, "color": "#0FA3B1", "type": "None"}}}
