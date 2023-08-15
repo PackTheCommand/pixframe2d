@@ -52,7 +52,7 @@ class CanvasApp:
 
         self.rubber_mode = False
         self.rubber_area_id = None
-        self.level_matadata={"music-track":"test.mp4",""}
+        self.level_matadata={"music-track":"test.mp4"}
 
         self.current_texture = None
         self.current_obj_type = None
