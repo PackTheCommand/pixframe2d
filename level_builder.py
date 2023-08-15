@@ -46,7 +46,36 @@ class CanvasApp:
         self.save_path = None
         self.displayimage = None
         self.curant_object_data = {}
+        self.fill_mode = False
+        self.fill_start_x = 0
+        self.fill_start_y = 0
+
+        self.rubber_mode = False
+        self.rubber_area_id = None
+        self.level_matadata={"music-track":"test.mp4",""}
+
+        self.current_texture = None
+        self.current_obj_type = None
+        self.elements = []
+
+        self.uids = set()
+        # path data
+
+        self.object_pathstore = []
+        self.path_labels = []  # Store path label data (names)
+        self.path_metadata = {}
+        self.pathpoints = []
+        self.path_position_offset = {"$curant": []}
+        self.current_path = []
+
+        self.path_entries = []
+        self.pathfinding_mode = False
+
+
+
+
         self.root.configure(bg='#333440')
+
 
         self.left_Frame =ttk.Frame(root, )#bg='#333440')
         self.left_Frame.pack(side="left", fill="both", expand=True)
@@ -78,16 +107,10 @@ class CanvasApp:
         f =ttk.Frame(self.right_Frame, )#bg='#333440')
         f.pack(side=tk.TOP, anchor="nw")
 
-        self.fill_mode = False
-        self.fill_start_x = 0
-        self.fill_start_y = 0
 
         self.fill_button =tk.Button(toolFrame, text="🪣", command=self.toggle_fill_mode,bg='#444654', fg='white',
         font=tkfont.Font(size=12, weight="bold"), relief="flat")
         self.fill_button.pack(side=tk.TOP, anchor="n")
-
-        self.rubber_mode = False
-        self.rubber_area_id = None
 
         self.rubber_button =tk.Button(toolFrame, text="🧽", command=self.toggle_rubber_mode,bg='#444654',font=tkfont.Font(size=12, weight="bold"), relief="flat",fg='white')
         self.rubber_button.pack(side=tk.TOP, anchor="n")
@@ -127,33 +150,12 @@ class CanvasApp:
         self.texture_data.append(
             {"name": "🏁 Finisch", "path": "imgs/finisch.png", "type": "level_finisch", "collision": False}, )
 
-        self.current_texture = None
-        self.current_obj_type = None
-        self.elements = []
 
-        style = ttk.Style()
+
+
         root.tk.call("source", "ttk_theme/azure.tcl")
         root.tk.call("set_theme", "dark")
 
-        """style.theme_use("azure")  # Use the "clam" theme for a dark-themed look
-        style.configure("TScrollbar",
-                        background='#333440',
-                        troughcolor="#76818E",
-                        gripcount=0,
-                        darkcolor='#444654',
-                        lightcolor='#444654',
-                        bordercolor='#444654')
-
-        style.configure("TNotebook", background="#2E2E2E")  # Dark gray background
-        style.configure("TNotebook.Tab", background="#3E3E3E", foreground="white")  # Dark gray tab with white text
-        style.map("TNotebook.Tab", background=[("selected", "#505050")])  # Selected tab color
-        style.configure("TCheckbutton", background="#444654", foreground="white", highlightbackground="#444654",
-                        highlightcolor="#444654", font=tkfont.Font(size=10))
-        style.map("TCheckbutton",
-                  background=[("active", "#444654"), ("!active", "#333")],
-                  foreground=[("active", "white"), ("!active", "white")],
-                  highlightbackground=[("active", "#333440"), ("!active", "#333")],
-                  highlightcolor=[("active", "#333440"), ("!active", "#333")])"""
 
         editor_tabs_book = ttk.Notebook(self.right_Frame)
         editor_tabs_book.pack(side="top", fill="both", expand=True)
@@ -207,18 +209,7 @@ class CanvasApp:
         self.select_bg_button =tk.Button(top_frame, text="Select Background Image", command=self.select_bg_image,relief="flat",bg='#343540', fg='white')
         self.select_bg_button.pack(side=tk.LEFT)
 
-        self.uids = set()
-        # path data
 
-        self.object_pathstore = []
-        self.path_labels = []  # Store path label data (names)
-        self.path_metadata = {}
-        self.pathpoints = []
-        self.path_position_offset = {"$curant": []}
-        self.current_path = []
-
-        self.path_entries = []
-        self.pathfinding_mode = False
 
         checked_state =tk.BooleanVar()
         checked_state.set(True)
@@ -584,12 +575,16 @@ class CanvasApp:
             return
         self.canvas.delete("all")  # Clear canvas before loading new elements
         self.protected_elements = []
+        self.object_pathstore=[]
+        self.path_metadata=[]
         self.create_cordnateSystem()
 
         with open(ask) as f:
             level_json = json.load(f)
         self.root.title("Editing - " + ask.split("/")[-1])
         self.save_path = ask
+
+        self.ofset_y,self.ofset_x=0,0
 
         self.elements = []
         elem = level_json["elements"]
@@ -873,7 +868,7 @@ class CanvasApp:
         self.save_path = sf
         self.root.title("Editing - " + sf.split("/")[-1])
 
-        def positionizePaths():
+        """def positionizePaths():
             paths = []
             for n, points_pack in enumerate(self.object_pathstore):
                 points, id = points_pack
@@ -888,9 +883,9 @@ class CanvasApp:
                 else:
                     for n2, p in enumerate(points):
                         paths[n][0] += [(p[0], p[1])]
-            return paths
+            return paths"""
 
-        pp = positionizePaths()
+        pp = self.object_pathstore
         print(pp)
         with open(sf, "w") as f:
             if self.bg_image:
