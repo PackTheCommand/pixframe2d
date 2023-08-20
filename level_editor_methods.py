@@ -106,3 +106,18 @@ def get_files_in_folder(folder_path):
         print("Error:", e)
 
     return files
+
+def get_folders_in_folder(folder_path):
+    folders = []
+
+    try:
+        # Get a list of all items in the folder
+        items = os.listdir(folder_path)
+
+        # Filter out only the files (not directories)
+        folders = [item for item in items if os.path.isdir(os.path.join(folder_path, item))]
+
+    except OSError as e:
+        print("Error:", e)
+
+    return folders

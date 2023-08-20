@@ -48,7 +48,7 @@ class Animated_block:
 
     def move(self):
         mx,my=self.Animation.move()
-        print(mx,my)
+        #print(mx,my)
 
 
         self.renderloop.moveto(self.elementid,mx,my)

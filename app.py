@@ -2,6 +2,7 @@ import json
 import threading
 
 from audio import sound
+from mygame import audio
 
 with open("leveldata/levels.json") as f:
     all_level_overview_json = json.load(f)
@@ -232,19 +233,21 @@ def check_if_collisions(main_surface, player_new_x, player_new_y, other_surfaces
             return True
     return False
 
+musicBG_tile,musicBG_author="",""
 
+
+player = None
 daeth_areas = []
-
+import mutagen
 currant_game_file = ""
 backgroundMusic=None
-
+from audio import definebgMusic
 def startGame(path_uuid=None):
-    global player, player_surf, currant_game_file,backgroundMusic
+    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author
     if path_uuid == None:
         path_uuid = currant_game_file
     currant_game_file = path_uuid
-    backgroundMusic=sound.music_communicate
-    loopsound(sound.music_communicate)
+
 
     start_x, start_y = 100, 100
     render_loop.keypressfunction = handle_keypress
@@ -297,6 +300,18 @@ def startGame(path_uuid=None):
         return colidebles
 
     ll = genLevel(level["elements"])
+
+    level_metadata=level["level-metadata"]
+
+    if level_metadata["bg-music"]:
+        print("bg_music_defined")
+        musicBG_tile,musicBG_author=definebgMusic(level_metadata["bg-music"], )
+    backgroundMusic = sound.bg_music
+    loopsound(sound.bg_music)
+    render_loop.after(200, display_musicInfo)
+    #display_musicInfo()
+
+
     movable_objects.clear_animation_list()
     render_loop.clear_scedue()
     for path_uuid in level["path-metadata"]:
@@ -321,8 +336,53 @@ def startGame(path_uuid=None):
                     movable_objects.addAnimatedObject(render_loop, level_store_uid_to_Elementid[bound_to], anima)
 
 
-
     render_loop.set_scedue(movable_objects.run_animation)
+
+
+
+
+
+bg_music_info_components={}
+
+def display_musicInfo():
+    global backgroundMusic
+
+    rx,ry=80,80
+    if backgroundMusic:
+        title,author=musicBG_tile[:14]+"..",musicBG_author[:18]+".."
+
+        title_x,title_y=108, SCREEN_HEIGHT  +8
+        artist_x,artist_y=118, SCREEN_HEIGHT  + 34
+
+        a = render_loop.addImage("imgs/song_info_bg.png", 40, SCREEN_HEIGHT , 0.5, 0.5, uses_map_offset=False)
+        title = render_loop.addText(title, title_x,title_y, font_size=26, )
+        artist = render_loop.addText(author,artist_x,artist_y , font_size=22, )
+
+    circle=0
+    direction=-1
+    def slide_in_slide_out():
+        nonlocal direction, circle
+
+
+
+        if (circle>=220)&(direction==-1):
+
+            direction=1
+
+        if (circle<80):
+
+            render_loop.moveto(a,40,SCREEN_HEIGHT-circle)
+            render_loop.moveto(title, title_x , title_y- circle)
+            render_loop.moveto(artist, artist_x , artist_y - circle)
+
+        circle-=direction
+        if circle<=-1:
+            render_loop.removeElement(a)
+            render_loop.removeElement(title)
+            render_loop.removeElement(author)
+            return 3
+
+    render_loop.set_scedue(slide_in_slide_out)
 
 
 

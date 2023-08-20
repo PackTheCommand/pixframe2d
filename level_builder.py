@@ -20,6 +20,23 @@ from level_editor_methods import *
 
 import ui_code
 
+
+folders={"main": {"deco": {},"blocks":{},"actions":{},}}
+
+
+def addSubfolder(path:str,name:str):
+    p=["main"]+path.split("/")
+    cr=folders
+    while  len(p)>0:
+        print(cr)
+        cr=cr[p.pop(0)]
+
+    print(cr)
+
+    cr[name]={}
+
+
+
 """import sv_ttk"""  # to slow
 class CanvasApp:
     def __init__(self, root):
@@ -52,7 +69,7 @@ class CanvasApp:
 
         self.rubber_mode = False
         self.rubber_area_id = None
-        self.level_matadata={"music-track":"test.mp4"}
+        self.level_matadata={"name":"","dificulty":1.0,"bg-music":""}
 
         self.current_texture = None
         self.current_obj_type = None
@@ -134,24 +151,46 @@ class CanvasApp:
 
         # Initialize data
         self.images = []
+
         self.texture_data = [
-            {"name": "🎯 Spawnpoint", "path": "imgs/spawnpoint.png", "type": "spawn", "collision": False},
-            {"name": "💀 Death-Area", "path": "imgs/death_area.png", "type": "death_area", "collision": False}
+            {"name": "🎯 Spawnpoint", "path": "imgs/spawnpoint.png", "type": "spawn", "collision": False,"folder":"actions/"},
+            {"name": "💀 Death-Area", "path": "imgs/death_area.png", "type": "death_area", "collision": False,"folder":"actions/"}
         ]
         self.texture_data += [
-            {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file, "type": "object", "collision": True}
+            {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file, "type": "object", "collision": True,"folder":"blocks/"}
             for file in get_files_in_folder("imgs/blocks/")
         ]
+
+        for folder in get_folders_in_folder("imgs/blocks/"):
+            addSubfolder("blocks",folder)
+            for file in get_files_in_folder("imgs/blocks/"+folder):
+                self.texture_data += [
+                    {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + folder + "/" + file, "type": "object",
+                     "collision": True,"folder":"blocks/"+folder+"/"}
+                ]
+
+
+
+
+
+
         self.texture_data += [
-            {"name": "✿ " + file.split(".", 1)[0], "path": "imgs/decoration/" + file, "type": "object",
+            {"name": "✿ " + file.split(".", 1)[0], "path": "imgs/decoration/" + file, "type": "object","folder":"deco/",
              "collision": False}
             for file in get_files_in_folder("imgs/decoration/")
         ]
+
+        for folder in get_folders_in_folder("imgs/decoration/"):
+            addSubfolder("blocks",folder)
+            for file in get_files_in_folder("imgs/decoration/"+folder):
+                self.texture_data += [
+                    {"name": "✿ " + file.split(".", 1)[0], "path": "imgs/decoration/" + folder + "/" + file, "type": "object",
+                     "collision": True,"folder":"deco/"+folder+"/"}
+                ]
+
+
         self.texture_data.append(
-            {"name": "🏁 Finisch", "path": "imgs/finisch.png", "type": "level_finisch", "collision": False}, )
-
-
-
+            {"name": "🏁 Finisch", "path": "imgs/finisch.png", "type": "level_finisch", "collision": False,"folder":"actions/"} )
 
         root.tk.call("source", "ttk_theme/azure.tcl")
         root.tk.call("set_theme", "dark")
@@ -161,22 +200,46 @@ class CanvasApp:
         editor_tabs_book.pack(side="top", fill="both", expand=True)
         self.editor_tabs_book=editor_tabs_book
         # tab 1
+
+        general_setingsTab=ttk.Frame(editor_tabs_book)
+        import objects.general_level_setings_menu as glsm
+
+        glsm.GeneralLevelSetings_Window(general_setingsTab,self.level_matadata,lambda _,e:())
+
+
+
+
+
         tab1 =ttk.Frame(editor_tabs_book)
 
         tap_paths =ttk.Frame(editor_tabs_book,)# bg="#444654")
 
         # can
+        fr2=ttk.LabelFrame(tab1,text="path")
+        fr2.pack(fill="x")
+        self.folder_nav_back_button = tk.Button(fr2,text="ᐊ",width=1,font=tkfont.Font(size=10),relief="flat")
+        self.folder_nav_back_button.pack(side=tk.LEFT)
+
+        self.elements_path_area_label = tk.Label(fr2, text="/fvdsdf",anchor="nw")
+        self.elements_path_area_label.pack(fill=tk.BOTH,side="left")
+
+
         canvas =tk.Canvas(tab1, width=200, bg='#333440', highlightthickness=0)
 
         editor_tabs_book.add(tab1, text="Elements",
                              image=createImage("imgs/editor/editor_element_tab.png", 16, 16, name="elements_tab_icon"))
 
+
+
         editor_tabs_book.add(tap_paths, text="Elements",
                              image=createImage("imgs/editor/editor_paths_tab.png", 16, 16, name="path_tab_icon"))
 
+        editor_tabs_book.add(general_setingsTab, text="Lev Settings",
+                             image=createImage("imgs/editor/level_setings.png", 16, 16, name="general_lev_setings_tab_icon"))
+
         scrollbar = ttk.Scrollbar(master=tab1, command=canvas.yview, )
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        canvas.pack(side=tk.RIGHT, fill=tk.BOTH)
+        canvas.pack( fill=tk.BOTH,expand=True)
 
         canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -190,6 +253,8 @@ class CanvasApp:
             canvas.configure(scrollregion=canvas.bbox("all"))
 
         inner_frame.bind("<Configure>", on_configure)
+
+
 
         # can
 
@@ -490,53 +555,153 @@ class CanvasApp:
             name_label =ttk.Label(texture_frame, text=texture["name"], )#bg='#333440', fg='white')
             name_label.pack()
 
+
+    def new_create_texture_buttons(self,):
+
+
+        pass
+
     def create_texture_buttons(self):
         last_texture = None
         t = None
-        for index, texture in enumerate(self.texture_data):
-            row = index // 2
-            t = texture
-            col = index % 2
+        row = 0
+        element_jard=[]
+        col = -1
+        folder_path=["main"]
 
-            texture_frame =tk.Frame(self.texture_buttons_frame, bg='#333440')
+
+
+        p=tk.Label(self.texture_buttons_frame, text="Folders",bg='#333440', fg='white')
+
+
+        def create_folder_button(path,name):
+            global folders
+            nonlocal element_jard
+            texture_frame = tk.Frame(self.texture_buttons_frame, bg='#333440')
             texture_frame.grid(row=row, column=col, padx=5, pady=5)
 
-            def selectItem(texture_frame, texture, namelabel):
-                texture = self.texture_data[texture]
-                nonlocal last_texture
-                if self.curant_object_data == texture: return
-                if last_texture:
-                    last_texture[0].configure(bg="#333440")
-                    last_texture[1].configure(bg="#333440")
-                texture_frame.configure(bg="green")
-                namelabel.configure(bg="green")
-                last_texture = (texture_frame, namelabel)
-                print(texture)
-                self.current_obj_type = texture["type"]
-                print(texture["type"])
+            def selectItem(path):
+                folder_path.append(path)
+                load_folder_content()
 
-                self.curant_object_data = texture
-                self.current_texture = texture["path"]
 
-            image = createImage(texture["path"], 25, 25, name=texture["path"].split("/")[-1])
-            image_label =tk.Label(texture_frame, image=image, bg='#333440')
+            image = createImage("imgs/editor/folder.png", 50, 50, name="folder_icon".split("/")[-1])
+            image_label = tk.Label(texture_frame, image=image, bg='#333440',width=50, height=25)
 
             image_label.image = image
             image_label.pack()
-            pr = texture["name"]
+            pr = name
 
-            if len(texture["name"]) > 15:
+            if len(pr) > 15:
                 pr = pr[:12] + "..."
 
-            name_label =tk.Label(texture_frame, text=pr, bg='#333440', fg='white', width=12, anchor="w")
-            name_label.bind("<Button-1>", lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+            name_label = tk.Label(texture_frame, text=pr, bg='#333440', fg='white', width=12, anchor="n")
+            name_label.bind("<Button-1>", lambda e, pat=path: selectItem(pat))
 
-            image_label.bind("<Button-1>",
-                             lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+            image_label.bind("<Button-1>",lambda e, pat=path: selectItem(pat))
             texture_frame.bind("<Button-1>",
-                               lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+                               lambda e, pat=path: selectItem(pat))
 
-            name_label.pack()
+            name_label.pack(anchor="n",side="top")
+
+            element_jard += [name_label, image_label, texture_frame]
+
+
+        def navBack():
+            nonlocal folder_path
+            if len(folder_path)==1:return
+            folder_path.pop()
+            load_folder_content()
+        self.folder_nav_back_button.configure(command=navBack)
+
+        def load_folder_content():
+
+            nonlocal row, col,element_jard,last_texture
+            last_texture = None
+            for e in element_jard:
+                e.destroy()
+            row = 0
+            col = -1
+
+            def getCurant_subfolders():
+                p=folder_path.copy()
+                cd=folders
+                print("folders",folders)
+                while p:
+                    cd=cd[p.pop(0)]
+                return cd
+
+
+
+
+            for f in getCurant_subfolders():
+                print(f)
+                col += 1
+                if col >= 2:
+                    row += 1
+                    col = 0
+
+                create_folder_button(f,f)
+
+
+            path_str=""
+            for i in folder_path[1::]:
+                path_str+=i+"/"
+
+            self.elements_path_area_label.configure(text=path_str)
+            for index, texture in enumerate(self.texture_data):
+
+                print(texture)
+                if texture["folder"]!=path_str:
+                    continue
+                col += 1
+                if col >= 2:
+                    row += 1
+                    col = 0
+
+
+                texture_frame =tk.Frame(self.texture_buttons_frame, bg='#333440')
+                texture_frame.grid(row=row, column=col, padx=5, pady=5)
+
+                def selectItem(texture_frame, texture, namelabel):
+                    texture = self.texture_data[texture]
+                    nonlocal last_texture
+                    if self.curant_object_data == texture: return
+
+                    if last_texture:
+                        last_texture[0].configure(bg="#333440")
+                        last_texture[1].configure(bg="#333440")
+                    texture_frame.configure(bg="green")
+                    namelabel.configure(bg="green")
+                    last_texture = (texture_frame, namelabel)
+                    print(texture)
+                    self.current_obj_type = texture["type"]
+                    print(texture["type"])
+
+                    self.curant_object_data = texture
+                    self.current_texture = texture["path"]
+
+                image = createImage(texture["path"], 25, 25, name=texture["path"].split("/")[-1])
+                image_label =tk.Label(texture_frame, image=image, bg='#333440')
+
+                image_label.image = image
+                image_label.pack()
+                pr = texture["name"]
+
+                if len(texture["name"]) > 15:
+                    pr = pr[:12] + "..."
+
+                name_label =tk.Label(texture_frame, text=pr, bg='#333440', fg='white', width=12, anchor="w")
+                name_label.bind("<Button-1>", lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+
+                image_label.bind("<Button-1>",
+                                 lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+                texture_frame.bind("<Button-1>",
+                                   lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+
+                name_label.pack()
+                element_jard+=[name_label,image_label,texture_frame]
+        load_folder_content()
 
     def updatebg(self, e):
         if self.bg_image_path:
@@ -618,6 +783,8 @@ class CanvasApp:
         self.path_metadata = level_json["path-metadata"]
         self.draw_object_paths()
 
+        for key in level_json["level-metadata"]:
+            self.level_matadata[key]=level_json["level-metadata"][key]
     def toggle_rubber_mode(self):
         self.rubber_mode = not self.rubber_mode
         if self.rubber_mode:
@@ -886,16 +1053,16 @@ class CanvasApp:
             return paths"""
 
         pp = self.object_pathstore
-        print(pp)
+
         with open(sf, "w") as f:
             if self.bg_image:
                 json.dump(
                     {"elements": [{"type": "bg_image", "texture": self.bg_image_path}] + self.elements, "paths": pp,
-                     "path-metadata": self.path_metadata}, f)
+                     "path-metadata": self.path_metadata,"level-metadata":self.level_matadata}, f)
             else:
                 json.dump(
                     {"elements":  self.elements, "paths": pp,
-                     "path-metadata": self.path_metadata}, f)
+                     "path-metadata": self.path_metadata,"level-metadata":self.level_matadata}, f)
 
     def toggle_fill_mode(self):
         self.fill_mode = not self.fill_mode
