@@ -11,12 +11,12 @@ import keyboard
 import pygame
 from pygame import K_UP, K_DOWN, K_LEFT, K_RIGHT
 
-from engene import GameRenderLoop
+from engene import GameRenderLoop, SCHADOW_STATE
 from ui_elements import Button, TextInput, Checkbox
 
 import movable_objects
 
-def setingsMenue(render_loop):
+def title_screen(render_loop):
     def clear_content():
         nonlocal render_loop
         render_loop.clearMenu()
@@ -78,7 +78,7 @@ def display_Credits():
 
             render_loop.removeElement(i)
         render_loop.hides([B])
-        setingsMenue(render_loop)
+        title_screen(render_loop)
     def on_key(pressed_keys, mouseButtons_pressed,_):
 
         y = 0
@@ -127,6 +127,7 @@ def display_Credits():
 
 
 def level_select_screen():
+
     def load_levl(lev_file_path):
 
         print("selected", lev_file_path)
@@ -171,6 +172,8 @@ def level_select_screen():
     level_select_store.append(t)
     t = render_loop.addText("Select a Level", x - 30, 50, 50, uses_map_offset=False)
     level_select_store.append(t)
+
+
 
 
 SCREEN_WIDTH = 800
@@ -241,26 +244,40 @@ daeth_areas = []
 import mutagen
 currant_game_file = ""
 backgroundMusic=None
+player_animation=None
 from audio import definebgMusic
+from scripting import scriptManager
 def startGame(path_uuid=None):
-    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author
+    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation
     if path_uuid == None:
         path_uuid = currant_game_file
     currant_game_file = path_uuid
 
+    render_loop.togleSchadows(SCHADOW_STATE.ON)
+
 
     start_x, start_y = 100, 100
     render_loop.keypressfunction = handle_keypress
-    player = render_loop.addImage("imgs/player.png", start_x, start_y, True)
+    player,player_animation = render_loop.addAnimatedImage("imgs/animations/player.anime", start_x, start_y, True)
     print("player", player)
 
     player_surf = render_loop.getSurface(player)
 
-    with open(path_uuid + ".levdat") as f:
+    with open(path_uuid + "level.levdat") as f:
 
         level = json.load(f)
 
+
+    scripts=level["scripts"]
+    print(scripts)
+
     level_store_uid_to_Elementid={}
+
+    scriptsManagers=[]
+    for script in scripts:
+        if script["path"].split(".")[-1]=="py":
+            scriptsManagers.append(scriptManager.pyManager(script["path"],render_loop,player))
+
 
     def genLevel(level):
         nonlocal level_store_uid_to_Elementid
@@ -268,9 +285,15 @@ def startGame(path_uuid=None):
 
         level_store = []
         colidebles = {}
+
+        lowerable=[]
         for e in level:
             if e["type"] == "object":
+
                 i = render_loop.addImageFixedWidth(e["texture"], e["x"], e["y"], e["width"], e["height"])
+                if "o-layer" in e:
+                    if e["o-layer"]=="back":
+                        lowerable.append(i)
                 if e["collision"]:
                     colidebles[render_loop.getSurface(i)] = i
 
@@ -279,7 +302,8 @@ def startGame(path_uuid=None):
             elif e["type"] == "spawn":
                 render_loop.moveto(player, e["x"], e["y"])
             elif e["type"] == "bg_image":
-                i = render_loop.addImage(e["texture"], 0, 0, uses_map_offset=False)
+                i = render_loop.addImageFixedWidth(e["texture"], 0,0,SCREEN_WIDTH,SCREEN_HEIGHT, uses_map_offset=False)
+                render_loop.addSchadowIgnore(i)
                 render_loop.lower(i)
                 level_store += [i]
             elif e["type"] == "death_area":
@@ -296,7 +320,8 @@ def startGame(path_uuid=None):
                     e["width"], e["height"]
 
                 ))
-
+        for e in lowerable:
+            render_loop.lower(e)
         return colidebles
 
     ll = genLevel(level["elements"])
@@ -310,6 +335,8 @@ def startGame(path_uuid=None):
     loopsound(sound.bg_music)
     render_loop.after(200, display_musicInfo)
     #display_musicInfo()
+
+
 
 
     movable_objects.clear_animation_list()
@@ -335,17 +362,21 @@ def startGame(path_uuid=None):
                     print("addet animation")
                     movable_objects.addAnimatedObject(render_loop, level_store_uid_to_Elementid[bound_to], anima)
 
+    for script in scriptsManagers:
+        script.setLEVconstants(level_store_uid_to_Elementid,level_store)
+        script.start()
+
 
     render_loop.set_scedue(movable_objects.run_animation)
 
 
 
-
+bg_music_indicator=None
 
 bg_music_info_components={}
 
 def display_musicInfo():
-    global backgroundMusic
+    global backgroundMusic,bg_music_indicator
 
     rx,ry=80,80
     if backgroundMusic:
@@ -357,10 +388,14 @@ def display_musicInfo():
         a = render_loop.addImage("imgs/song_info_bg.png", 40, SCREEN_HEIGHT , 0.5, 0.5, uses_map_offset=False)
         title = render_loop.addText(title, title_x,title_y, font_size=26, )
         artist = render_loop.addText(author,artist_x,artist_y , font_size=22, )
+        render_loop.addSchadowIgnore(a)
+        render_loop.addSchadowIgnore(artist)
+        render_loop.addSchadowIgnore(title)
 
     circle=0
     direction=-1
     def slide_in_slide_out():
+        global bg_music_indicator
         nonlocal direction, circle
 
 
@@ -377,10 +412,10 @@ def display_musicInfo():
 
         circle-=direction
         if circle<=-1:
-            render_loop.removeElement(a)
-            render_loop.removeElement(title)
-            render_loop.removeElement(author)
+            render_loop.removes([a,title,artist])
+            bg_music_indicator=None
             return 3
+    bg_music_indicator=[a,title,artist]
 
     render_loop.set_scedue(slide_in_slide_out)
 
@@ -407,6 +442,7 @@ def move(xp,sprint=False):
             print(a, b)
             if (a & b):
                 render_loop.moveto(player, x + ms, y)
+            player_animation.loop("walk",5)
         else:
 
             a, b = not check_if_collisions(player_surf, x + ms + w, y, colidebles), \
@@ -452,6 +488,20 @@ def jump_s():
         print("end-1")
         jumping = False
         falling = True
+def pushUp():
+
+
+
+
+
+    x, y = render_loop.getXY(player)
+
+
+    a = check_if_collisions(player_surf, x, y, colidebles)
+
+    if (a):
+
+        render_loop.moveto(player, x, y -2)
 
 
 def calculate_map_correction(screen_width, screen_height, margin_x, margin_y, player_x, player_y):
@@ -619,18 +669,19 @@ def finisch_Menu():
         render_loop.removeElement(death_titel)
         startGame(None)
 
-    def play_select_level():
+    def select_title_screen():
         # print("klicked")
         pauseAll()
+        clearLevel()
 
         render_loop.removeElement(death_titel)
-        render_loop.hides([play, quit, levsel])
-        level_select_screen()
+        render_loop.removes([play, quit, levsel])
+        title_screen(render_loop)
 
     play = Button(render_loop, 320, 200, width=200, height=50, text="Play Again", click_function=replay, font_size=35)
 
     levsel = Button(render_loop, 320, 260, width=200, height=50, text="Level Selection",
-                    click_function=play_select_level, font_size=35)
+                    click_function=select_title_screen, font_size=35)
 
     def quit():
         pauseAll()
@@ -643,7 +694,7 @@ from audio import pauseAll
 
 
 def clearLevel():
-    global level_store, daeth_areas, player, player_surf, jumping, falling, finisch_areas
+    global level_store, daeth_areas, player, player_surf, jumping, falling, finisch_areas,bg_music_indicator
     render_loop.keypressfunction = None
     for i in level_store:
         render_loop.removeElement(i)
@@ -651,11 +702,16 @@ def clearLevel():
     level_store = []
     daeth_areas = []
     finisch_areas = []
+    render_loop.togleSchadows(SCHADOW_STATE.OFF)
+    render_loop.no_schadow_elements=[]
     render_loop.removeElement(player)
     player, player_surf = None, None
     jumping = False
 
     falling = False
+    if bg_music_indicator:
+        render_loop.removes(bg_music_indicator)
+        bg_music_indicator = None
 
     render_loop.map_ofset_x, render_loop.map_ofset_y = 0, 0
 
@@ -691,7 +747,7 @@ escape_pressing=False
 def display_pause_menu():
 
     pause_titel = render_loop.addText("Game Paused", 40, 30, 80, (131, 201, 244), uses_map_offset=False)
-
+    render_loop.addSchadowIgnore(pause_titel)
     def replay():
         global in_pause_menu
         # print("klicked")
@@ -709,12 +765,15 @@ def display_pause_menu():
         # print("klicked")
         pauseAll()
 
+
         render_loop.removes([play, quitb, levsel,pause_titel])
+        clearLevel()
+        startGame()
         level_select_screen()
 
     play = Button(render_loop, 100, 200, width=200, height=50, text="Restart", click_function=replay, font_size=35)
 
-    levsel = Button(render_loop, 100, 260, width=200, height=50, text="Level Selection",
+    levsel = Button(render_loop, 100, 260, width=200, height=50, text="Back To Title",
                     click_function=play_select_level, font_size=35)
 
     def quit():
@@ -770,7 +829,7 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
                     jumpacseleration = 4.4
                     jumping = True
                     playsound(sound.jump_sound)
-
+        pushUp()
         gravity()
         jump_s()
 
@@ -794,15 +853,17 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
         if (check_death_areas(px, py)):
             print("death")
             on_death()
+            return
+
 
 
 player, colidebles, player_surf, level_store = None, None, None, None
 """level,s=None,None
 
 b=Button(render_loop,50,50,100,40,"halihalo",onclick())"""
-setingsMenue(render_loop)
+title_screen(render_loop)
 
 render_loop.debug_interface_function = on_debub_ON
-
+render_loop.togleSchadows(SCHADOW_STATE.OFF)
 # display_start_screen(render_loop)
 render_loop.run()

@@ -1,6 +1,11 @@
 class PathFollowAnimation:
     def __init__(self, points, step_width, loop=False):
+
+
         self.points = points
+        p1x,p1y=self.points[0]
+        self.points[0]=(p1x,p1y-50)
+        self.points[-1] = (p1x, p1y + 25)
         self.step_width = step_width
         self.loop = loop
         self.current_index = 0
@@ -51,7 +56,7 @@ class Animated_block:
         #print(mx,my)
 
 
-        self.renderloop.moveto(self.elementid,mx,my)
+        self.renderloop.moveto(self.elementid,mx-25,my-50)
 
 
 

@@ -37,4 +37,5 @@ class Objects:
         self.__renderloop.removeElement(uuid)
 
     def addTextObject(self,uuid,x,y):
+        pass
 

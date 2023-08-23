@@ -71,6 +71,11 @@ class Button:
 
 
         self.text_element = render_loop.addText(text, x + width // 2, y + height // 2, font_size=font_size, color=fg)
+
+
+        self.render_loop.addSchadowIgnore(self.button_clicked)
+        self.render_loop.addSchadowIgnore(self.button_inactive)
+        self.render_loop.addSchadowIgnore(self.text_element)
         s=self.render_loop.getSurface(self.text_element)
         self.render_loop.moveto(self.text_element,(x + width // 2)-s.get_width()//2,( y + height // 2)-s.get_height()//2)
 

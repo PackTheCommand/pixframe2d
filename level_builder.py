@@ -10,7 +10,7 @@ from PIL import Image, ImageTk
 from PIL import ImageDraw
 
 from mygame.objects.editWindow import EditWindow
-
+import objects.script_overview_menu as script_overview_menu
 G_WIDTH = 800
 G_HEIGHT = 600
 
@@ -40,6 +40,7 @@ def addSubfolder(path:str,name:str):
 """import sv_ttk"""  # to slow
 class CanvasApp:
     def __init__(self, root):
+        self.object_orinetation_level = "front"   # "front" or "back"
         self.select_object_path_bind_mode = False
 
         self.tempANY_store=None
@@ -66,6 +67,7 @@ class CanvasApp:
         self.fill_mode = False
         self.fill_start_x = 0
         self.fill_start_y = 0
+        self.curant_scripts=[]
 
         self.rubber_mode = False
         self.rubber_area_id = None
@@ -98,8 +100,10 @@ class CanvasApp:
         self.left_Frame.pack(side="left", fill="both", expand=True)
         self.right_Frame =ttk.Frame(root, )#bg='#333440')
         self.right_Frame.pack(side="right", fill="y")
-        top_frame = ttk.LabelFrame(self.left_Frame,labelanchor="w")
-        top_frame.pack(fill="y", side="top", anchor="nw")
+        top_bar=ttk.Frame(self.left_Frame, )#bg='#333440')
+        top_bar.pack(fill="y", side="top", anchor="nw")
+        top_frame = ttk.LabelFrame(top_bar,labelanchor="w")
+        top_frame.pack( side="left", anchor="nw")
         can_tool_frame =ttk.Frame(self.left_Frame, )#bg='#333440')
         can_tool_frame.pack(expand=True, fill="both")
         toolFrame =ttk.Frame(can_tool_frame, )#bg='#333440')
@@ -196,7 +200,7 @@ class CanvasApp:
         root.tk.call("set_theme", "dark")
 
 
-        editor_tabs_book = ttk.Notebook(self.right_Frame)
+        editor_tabs_book = ttk.Notebook(self.right_Frame,width=210)
         editor_tabs_book.pack(side="top", fill="both", expand=True)
         self.editor_tabs_book=editor_tabs_book
         # tab 1
@@ -204,7 +208,7 @@ class CanvasApp:
         general_setingsTab=ttk.Frame(editor_tabs_book)
         import objects.general_level_setings_menu as glsm
 
-        glsm.GeneralLevelSetings_Window(general_setingsTab,self.level_matadata,lambda _,e:())
+        self.general_setings_menu=glsm.GeneralLevelSetings_Window(general_setingsTab,self.level_matadata,lambda _,e:())
 
 
 
@@ -217,6 +221,10 @@ class CanvasApp:
         # can
         fr2=ttk.LabelFrame(tab1,text="path")
         fr2.pack(fill="x")
+
+        scripts_frame = ttk.Frame(editor_tabs_book)
+
+
         self.folder_nav_back_button = tk.Button(fr2,text="ᐊ",width=1,font=tkfont.Font(size=10),relief="flat")
         self.folder_nav_back_button.pack(side=tk.LEFT)
 
@@ -231,11 +239,15 @@ class CanvasApp:
 
 
 
+
         editor_tabs_book.add(tap_paths, text="Elements",
                              image=createImage("imgs/editor/editor_paths_tab.png", 16, 16, name="path_tab_icon"))
 
         editor_tabs_book.add(general_setingsTab, text="Lev Settings",
                              image=createImage("imgs/editor/level_setings.png", 16, 16, name="general_lev_setings_tab_icon"))
+
+        editor_tabs_book.add(scripts_frame, text="Scripts",
+                             image=createImage("imgs/editor/scripts_tab.png", 16, 16, name="scripts_tab_icon"))
 
         scrollbar = ttk.Scrollbar(master=tab1, command=canvas.yview, )
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -270,9 +282,40 @@ class CanvasApp:
 
         self.load_button =tk.Button(top_frame, text="Load", command=self.load_elements,bg='#444654', fg='white',relief="flat")
         self.load_button.pack(side=tk.LEFT,)
-
-        self.select_bg_button =tk.Button(top_frame, text="Select Background Image", command=self.select_bg_image,relief="flat",bg='#343540', fg='white')
+        self.select_bg_button = tk.Button(top_frame, text="Select Background Image", command=self.select_bg_image,
+                                          relief="flat", bg='#343540', fg='white')
         self.select_bg_button.pack(side=tk.LEFT)
+
+        back_front_controllFrame=ttk.LabelFrame(top_bar,text="",labelanchor="w")
+        back_front_controllFrame.pack(side="left")
+
+
+
+        def toback():
+            self.send_to_front_button.configure(bg='#343540')
+            self.object_orinetation_level="back"
+            self.send_to_back_button.configure(bg='#87D68D')
+        def tofront():
+            self.send_to_back_button.configure(bg='#343540')
+            self.object_orinetation_level="front"
+            self.send_to_front_button.configure(bg='#87D68D')
+
+        self.send_to_back_button = tk.Button(back_front_controllFrame, image=createImage("imgs/editor/to_back.png", 16, 16), command=toback,
+                                          relief="flat", bg='#343540', fg='white')
+        self.send_to_back_button.pack(side=tk.LEFT)
+
+        self.send_to_front_button = tk.Button(back_front_controllFrame, image=createImage("imgs/editor/to_front.png", 16, 16),
+                                             command=tofront,
+                                             relief="flat", bg='#87D68D', fg='white')
+        self.send_to_front_button.pack(side=tk.LEFT)
+
+
+
+
+
+
+
+        self.scriptWIN=script_overview_menu.UIWindow(scripts_frame)
 
 
 
@@ -734,57 +777,83 @@ class CanvasApp:
             self.protected_elements += [self.b]
             self.canvas.tag_lower("background")  # Move background to the bottom
 
-    def load_elements(self):
-        ask = open_file_dialog()
-        if not ask:
-            return
-        self.canvas.delete("all")  # Clear canvas before loading new elements
-        self.protected_elements = []
-        self.object_pathstore=[]
-        self.path_metadata=[]
-        self.create_cordnateSystem()
+    def load_elements(self,file=None,saveMode=False):
+        try:
+            if not file:
+                ask = open_file_dialog()
+                if not ask:
+                    return
+            else:
 
-        with open(ask) as f:
-            level_json = json.load(f)
-        self.root.title("Editing - " + ask.split("/")[-1])
-        self.save_path = ask
+                ask=file
+            self.canvas.delete("all")  # Clear canvas before loading new elements
+            self.protected_elements = []
+            self.object_pathstore=[]
+            self.path_metadata=[]
+            self.create_cordnateSystem()
 
-        self.ofset_y,self.ofset_x=0,0
+            with open(ask) as f:
+                level_json = json.load(f)
+            """
+            Note Save mode doesnt check all properties of the json file
+            """
+            if saveMode:
+                pr=[[],[],[], {}]
+                props=["elements","paths","scripts","path-metadata"]
+                for property in props:
+                    if property not in level_json:
+                        level_json[property]=pr[props.index(property)]
+            self.root.title("Editing - " + ask.split("/")[-1])
+            self.save_path = ask
 
-        self.elements = []
-        elem = level_json["elements"]
-        for n, element in enumerate(elem):
-            if element["type"] == "bg_image":
-                self.bg_image_path = element["texture"]
+            self.ofset_y,self.ofset_x=0,0
 
-                self.bg_image = createImage(element["texture"], G_WIDTH, G_HEIGHT,
-                                            name=element["texture"].split("/")[-1])
-                self.b = self.canvas.create_image(0, 0, anchor=tk.NW, image=self.bg_image, tags="background")
+            self.elements = []
+            elem = level_json["elements"]
+            for n, element in enumerate(elem):
+                if element["type"] == "bg_image":
+                    self.bg_image_path = element["texture"]
 
-                self.protected_elements += [self.b]
-                self.canvas.tag_lower("background")  # Move background to the bottom
-                self.updatebg("")
-                continue
-            if not element.get("uuid"):
-                element["uuid"] = self.gen_uuid()
-            image = createImage(element["texture"], 50, 50, name=element["texture"].split("/")[-1])
-            image_width, image_height = image.width(), image.height()
+                    self.bg_image = createImage(element["texture"], G_WIDTH, G_HEIGHT,
+                                                name=element["texture"].split("/")[-1])
+                    self.b = self.canvas.create_image(0, 0, anchor=tk.NW, image=self.bg_image, tags="background")
 
-            id = self.canvas.create_image(element["x"], element["y"], image=image, tags=["#movable"], anchor="nw")
-            element["id"] = id
-            self.elements += [element]
-        self.canvas.tag_raise("coordinate_labels")  # , "coordinate_labels")
-        self.path_metadata={}
-        self.path_position_offset={"$curant":[]}
-        self.object_pathstore = level_json["paths"]
-        for path, id in self.object_pathstore:
-            self.path_position_offset[id] = None
+                    self.protected_elements += [self.b]
+                    self.canvas.tag_lower("background")  # Move background to the bottom
+                    self.updatebg("")
+                    continue
+                if not element.get("uuid"):
+                    element["uuid"] = self.gen_uuid()
+                image = createImage(element["texture"], 50, 50, name=element["texture"].split("/")[-1])
+                image_width, image_height = image.width(), image.height()
 
-        self.path_metadata = level_json["path-metadata"]
-        self.draw_object_paths()
+                id = self.canvas.create_image(element["x"], element["y"], image=image, tags=["#movable"], anchor="nw")
+                element["id"] = id
+                self.elements += [element]
+            self.canvas.tag_raise("coordinate_labels")  # , "coordinate_labels")
+            self.path_metadata={}
 
-        for key in level_json["level-metadata"]:
-            self.level_matadata[key]=level_json["level-metadata"][key]
+            self.path_position_offset={"$curant":[]}
+            self.object_pathstore = level_json["paths"]
+            for path, id in self.object_pathstore:
+                self.path_position_offset[id] = None
+
+            self.path_metadata = level_json["path-metadata"]
+            self.draw_object_paths()
+
+            self.curant_scripts=level_json["scripts"]
+            self.scriptWIN.renewEntrys(self.curant_scripts)
+
+            for key in level_json["level-metadata"]:
+                self.level_matadata[key]=level_json["level-metadata"][key]
+            self.general_setings_menu.updatefunc()
+        except Exception as e:
+            from tkinter import messagebox
+            q=messagebox.askquestion("Error", str(e)+"Retry in Save Mode ?")
+            if q=="yes":
+                self.load_elements(ask,True)
+
+
     def toggle_rubber_mode(self):
         self.rubber_mode = not self.rubber_mode
         if self.rubber_mode:
@@ -984,7 +1053,8 @@ class CanvasApp:
                 "x": snapped_x - self.ofset_x, "y": snapped_y - self.ofset_y,
                 "collision": self.curant_object_data["collision"],
                 "width": BLOCK_SIZE, "height": BLOCK_SIZE,
-                "tags": [],
+                "nbt": {},
+                "o-layer":self.object_orinetation_level,
                 "uuid": self.gen_uuid()
             })
             self.canvas.tag_raise("coordinate_labels")
@@ -1035,22 +1105,6 @@ class CanvasApp:
         self.save_path = sf
         self.root.title("Editing - " + sf.split("/")[-1])
 
-        """def positionizePaths():
-            paths = []
-            for n, points_pack in enumerate(self.object_pathstore):
-                points, id = points_pack
-                paths.append([[], id])
-                if self.path_position_offset[id] is not None:
-                    ofsets = self.path_position_offset[id]
-                    print(self.path_position_offset)
-
-                    for n2, p in enumerate(points):
-                        o = ofsets[n2]
-                        paths[n][0] += [(p[0] - o[0], p[1] - o[1])]
-                else:
-                    for n2, p in enumerate(points):
-                        paths[n][0] += [(p[0], p[1])]
-            return paths"""
 
         pp = self.object_pathstore
 
@@ -1058,11 +1112,11 @@ class CanvasApp:
             if self.bg_image:
                 json.dump(
                     {"elements": [{"type": "bg_image", "texture": self.bg_image_path}] + self.elements, "paths": pp,
-                     "path-metadata": self.path_metadata,"level-metadata":self.level_matadata}, f)
+                     "path-metadata": self.path_metadata,"level-metadata":self.level_matadata,"scripts":self.curant_scripts}, f)
             else:
                 json.dump(
                     {"elements":  self.elements, "paths": pp,
-                     "path-metadata": self.path_metadata,"level-metadata":self.level_matadata}, f)
+                     "path-metadata": self.path_metadata,"level-metadata":self.level_matadata,"scripts":self.curant_scripts}, f)
 
     def toggle_fill_mode(self):
         self.fill_mode = not self.fill_mode

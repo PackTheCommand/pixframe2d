@@ -1,0 +1,21 @@
+{"frames":[
+  {
+    "path": "animations/player_idle/1.png"
+  },
+{
+    "path": "animations/player_idle/2.png"
+  },
+{
+    "path": "animations/player_idle/3.png"
+  }
+],"speed":10,"subanimations":{"walk": {
+  "frames":[
+  {
+    "path": "animations/player_run/1.png"
+  },
+    {
+    "path": "animations/player_run/2.png"
+  }
+  ],"speed":10
+
+}}}

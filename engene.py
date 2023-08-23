@@ -1,4 +1,6 @@
+import enum
 import math
+import os
 import random
 import threading
 import time
@@ -6,22 +8,29 @@ import time
 import pygame
 import sys
 
-from pygame import KEYDOWN, KEYUP
+from pygame import KEYDOWN, KEYUP, BLEND_RGBA_ADD, BLEND_RGBA_SUB, BLEND_RGBA_MULT
+
+from objects.animation import Animation
+
+import json
 
 
 class GameRenderLoop:
     def __init__(self, width, height):
+        self.shadow_textures = {}
+        self.no_schadow_elements = []
         self.display_debug = False
-        self.SHADOW_COLOR = (0, 0, 0, 150)
-        self.BLACK = (0, 0, 0)
-        self.WHITE = (255, 255, 255)
+
+        self.screen_width, self.screen_height=width,height
         pygame.init()
         self.width = width
         self.map_ofset_x,self.map_ofset_y=0,0
         self.height = height
-        self.screen = pygame.display.set_mode((width, height))
+        self.screen = pygame.display.set_mode((width, height),vsync=1)
         self.clock = pygame.time.Clock()
+        self.schadow_intensity=(100,100,100)
         self.elements = {}
+        self.animation_colections = {}
         self.keypressfunction=None
         self.event_listeners = {}
         self.element_click_listeners = {}  # Store click listeners by element ID
@@ -33,6 +42,9 @@ class GameRenderLoop:
 
 
         self.scheduled_events = []
+
+    def addSchadowIgnore(self,id):
+        self.no_schadow_elements.append(id)
 
     def after(self, duration, function):
         scheduled_time = pygame.time.get_ticks() + duration
@@ -125,8 +137,12 @@ class GameRenderLoop:
 
             if isinstance(element, pygame.Surface):
                 return element
+            if isinstance(element, Animation):
+                return element.getSurface()
             elif isinstance(element, pygame.font.Font):
                 return element.render("", True, (0, 0, 0))
+            else:
+                raise ValueError("Unsupported element type"+str(element))
 
 
         return None
@@ -192,21 +208,89 @@ class GameRenderLoop:
             if element_id in self.hidden_elements:
                 self.elements[element_id] = self.hidden_elements.pop(element_id)
 
+    def addAnimatedImage(self,path, x, y,  scale_x=1.0, scale_y=1.0,uses_map_offset=True):
+
+        with open(path) as f:
+            animation = json.load(f) #{"frames":[{"path":str}],"speed":1.0,"subanimations":{}}
+            #todo Implement Subanimations
+        l = []
+        shadow_images=[]
+        for i in animation["frames"]:
+            path=i["path"]
+
+
+            image = pygame.image.load("imgs/"+path)
+            image = pygame.transform.scale(image, (int(image.get_width() * scale_x), int(image.get_height() * scale_y)))
+            shadow_images+=[self.craete_manual_shadow_image(image)]
+            l+=[image]
+        d={}
+        sub_shadows={}
+        for subani in animation["subanimations"]:
+            d[subani]=[]
+            sub_shadows[subani]=[]
+            for frame in animation["subanimations"][subani]["frames"]:
+                image = pygame.image.load("imgs/"+frame["path"])
+                image = pygame.transform.scale(image, (int(image.get_width() * scale_x), int(image.get_height() * scale_y)))
+                d[subani] +=[image]
+                sub_shadows[subani] +=[self.craete_manual_shadow_image(image)]
+        element_id = self.genId()
+        animationObj=Animation(l,animation["speed"],d,element_id,shadow_images,sub_shadows)
+        self.animation_colections[element_id]=animationObj
+        self.elements[element_id]=( animationObj, x, y,uses_map_offset)
+        return element_id,animationObj
     def addImage(self, path, x, y, scale_x=1.0, scale_y=1.0,uses_map_offset=True):
         image = pygame.image.load(path)
         image = pygame.transform.scale(image, (int(image.get_width() * scale_x), int(image.get_height() * scale_y)))
         element_id = self.genId()
+        self.shadow_textures[element_id] = self.modify_translucent_areas(image, self.schadow_intensity)
+
         self.elements[element_id]=( image, x, y,uses_map_offset)
         return element_id
 
+    def modify_translucent_areas(self,image, color):
+        color=self.schadow_intensity
+        # Create a copy of the image to modify
+        modified_image = image.copy()
+        tr=False
+        for x in range(modified_image.get_width()):
+            for y in range(modified_image.get_height()):
+                tr=True
+
+                pixel_color = modified_image.get_at((x, y))
+
+                # Check if the pixel is fully translucent
+                if (pixel_color.a == 0):
+                    # Set color to white if translucent, else set the provided color
+
+                    modified_image.set_at((x, y), (255,255,255,255))
+
+                else:
+                    modified_image.set_at((x, y),(*color,255) )
+        print(modified_image.get_size())
+
+
+
+
+        return modified_image
     def addImageFixedWidth(self, path, x, y, width,height,uses_map_offset=True):
+        
+        
+        
         image = pygame.image.load(path)
 
         image = pygame.transform.scale(image, (width, height))
+        
+        
+        
         element_id = self.genId()
+
+        self.shadow_textures[element_id]=self.modify_translucent_areas(image, self.schadow_intensity)
+
         self.elements[element_id]=( image, x, y,uses_map_offset)
         #print(image,element_id)
         return element_id
+    def craete_manual_shadow_image(self,image):
+        return self.modify_translucent_areas(image, self.schadow_intensity)
 
     def addText(self, text, x, y, font_size=36, color=(255, 255, 255),uses_map_offset=False):
         if font_size not in self.font_cache:
@@ -226,6 +310,8 @@ class GameRenderLoop:
             self.element_click_listeners[element_id] = []
         self.element_click_listeners[element_id].append((event_id, click_function))
         return event_id
+    
+    
 
 
     def removeClickListener(self, event_id):
@@ -257,9 +343,68 @@ class GameRenderLoop:
         self.map_ofset_y-=yp
     def removeElement(self, element_id):
         if element_id in self.elements:
+            if element_id in self.shadow_textures:
+                self.shadow_textures.pop(element_id)
+
             self.elements.pop(element_id)
         elif element_id in self.hidden_elements:
+            if element_id in self.shadow_textures:
+                self.shadow_textures.pop(element_id)
             self.hidden_elements.pop(element_id)
+
+    def createShadowMap(self):
+        #polygon_points = []
+        s=pygame.Surface((self.screen_width,self.screen_height))
+        s.fill((255,255,255))
+        for obj_id in self.elements.copy():
+            if obj_id in self.no_schadow_elements:
+
+                continue
+
+
+            if obj_id not  in self.elements:
+                continue
+            x, y = self.getXY(obj_id)
+
+
+
+            o_type=self.elements[obj_id][0]
+            if isinstance(o_type,Animation):
+
+                obj_id=o_type.getRenderLoopId()
+                if self.getUsesMapOfset(obj_id):
+                    x, y = self.map_ofset_x + x, self.map_ofset_y + y
+                if not ((-100 < x - 50 < self.width) & (-100 < y - 50 < self.height)):
+                    continue
+                if obj_id in self.shadow_textures:
+                    s.blit(o_type.getShadow_img(), (x, y))
+                    continue
+                continue
+
+            if self.getUsesMapOfset(obj_id):
+                x,y=self.map_ofset_x+x,self.map_ofset_y+y
+            if not ((-100<x-50<self.width)&(-100<y-50<self.height)):
+                continue
+            if obj_id in self.shadow_textures:
+
+                s.blit(self.shadow_textures[obj_id],(x,y))
+                continue
+
+            surf=self.getSurface(obj_id)
+
+
+
+
+
+            #pygame.draw.rect(s, self.schadow_intensity, (x,y,surf.get_width(),surf.get_height()))
+
+        # Create a surface to draw the polygon
+        #polygon_surface = pygame.Surface((max_x - min_x, max_y - min_y), pygame.SRCALPHA)
+
+        #c=pygame.draw.rect(s,(100,100,100), (0,0,self.screen_width,self.screen_height))
+
+        s.set_colorkey((0,0,0))
+        return s
 
     def distance(s,point1, point2):
         return math.sqrt((point2[0] - point1[0]) ** 2 + (point2[1] - point1[1]) ** 2)
@@ -282,7 +427,9 @@ class GameRenderLoop:
             if intersections:
                 intersections.sort(key=lambda point: self.distance(light_source, point))
                 pygame.draw.polygon(surface, self.SHADOW_COLOR, intersections)
-
+    def getUsesMapOfset(self,id):
+        if id in self.elements:
+            return self.elements[id][3]
     def run(self):
         self.running = True
         def scedue():
@@ -297,6 +444,7 @@ class GameRenderLoop:
         self.togled_debug=False
 
         while self.running:
+
             mouseButtons_pressed = []
             presse_triger_once=[]
             self.process_scheduled_events()
@@ -339,17 +487,32 @@ class GameRenderLoop:
             if self.keypressfunction:
                 self.keypressfunction(pressed_keys,mouseButtons_pressed,presse_triger_once)
 
-            for element_id in self.elements:
 
+
+            for element_id in self.elements.copy() :
+                if element_id not in self.elements:
+                    continue
                 #print(element_id)
                 #print(self.elements[element_id],element_id)
                 element, x, y,uses_map_ofset = self.elements[element_id]
                 if isinstance(element, pygame.Surface):
                     if uses_map_ofset:
                         self.screen.blit(element, (self.map_ofset_x+x, self.map_ofset_y+y))
+
+
                     else:
-                        #print("ignore")
+
                         self.screen.blit(element, (x,y))
+                elif isinstance(element, Animation):
+
+                    element=element.getImage()
+                    if uses_map_ofset:
+                        self.screen.blit(element, (self.map_ofset_x + x, self.map_ofset_y + y))
+
+
+                    else:
+
+                        self.screen.blit(element, (x, y))
 
             if self.debug_interface_function:
 
@@ -358,6 +521,10 @@ class GameRenderLoop:
                     self.debug_interface_function(True)
                 else:
                     self.debug_interface_function(False)
+
+            if self.flagXL_SCHADOW_FILTER:
+                shadow_map = self.createShadowMap()
+                self.screen.blit(shadow_map,(0,0),special_flags=BLEND_RGBA_MULT)
             self.clock.tick(60)
 
 
@@ -367,6 +534,13 @@ class GameRenderLoop:
         pygame.quit()
         sys.exit()
 
+    def togleSchadows(self, param):
+        self.flagXL_SCHADOW_FILTER=param
+        pass
+
+class SCHADOW_STATE:
+    ON=True
+    OFF=False
 
 if __name__ == "__main__":
     render_loop = GameRenderLoop(800, 600)

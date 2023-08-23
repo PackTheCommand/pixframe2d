@@ -1,5 +1,6 @@
 [
-  {"name": "Into the Mines","file": "leveldata/level2","metadata":{}},
-  {"name": "A Dry Planet","file": "leveldata/level_3","metadata":{}}
+  {"name": "Into the Mines","file": "leveldata/level/","metadata":{}},
+  {"name": "A Dry Planet","file": "leveldata/level_3/","metadata":{}},
+  {"name": "testlevel","file": "leveldata/level_1/","metadata":{}}
 
 ]
