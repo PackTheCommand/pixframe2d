@@ -450,7 +450,7 @@ class GameRenderLoop:
             x,y,w,flickers=light[0],light[1],light[2],light[3]
             x, y = self.map_ofset_x + x, self.map_ofset_y + y
             if not ((-100 < x - 50 < self.width) & (-100 < y - 50 < self.height)):
-                print(n,"not in sight")
+
                 continue
             lightLayer=self.light_templade
             """if flickers:

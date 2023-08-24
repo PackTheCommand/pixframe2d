@@ -17,7 +17,7 @@ class ObjectPropertiesMenu:
 
 
         self.trigers=["Button-Interact_Main","Button-Interact_Second","Collision-BoxCollide","Collision-Box-HOVER","NONE","Action-Attack"]
-        self.special_types=["Interactive","Destroy","None"]
+        self.special_types=["Interactive","Destroy","None","OneTime-Interact"]
 
         self.setup_styles()
         self.setup_ui()

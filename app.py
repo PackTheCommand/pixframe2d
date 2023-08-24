@@ -4,6 +4,9 @@ import threading
 from audio import sound
 from mygame import audio
 
+
+INTERACTION_RADIUS=50
+
 with open("leveldata/levels.json") as f:
     all_level_overview_json = json.load(f)
 
@@ -251,10 +254,16 @@ import mutagen
 currant_game_file = ""
 backgroundMusic=None
 player_animation=None
+
+level_store_uid_to_Elementid={}
+
+# (x,y,width,height,KeyName)
+keyPressInteractions=[]
+
 from audio import definebgMusic
 from scripting import scriptManager
 def startGame(path_uuid=None):
-    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation
+    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation,level_store_uid_to_Elementid
     if path_uuid == None:
         path_uuid = currant_game_file
     currant_game_file = path_uuid
@@ -277,7 +286,7 @@ def startGame(path_uuid=None):
     scripts=level["scripts"]
     print(scripts)
 
-    level_store_uid_to_Elementid={}
+
 
     scriptsManagers=[]
     for script in scripts:
@@ -286,7 +295,7 @@ def startGame(path_uuid=None):
 
 
     def genLevel(level):
-        nonlocal level_store_uid_to_Elementid
+        global level_store_uid_to_Elementid
         global colidebles, level_store
 
         level_store = []
@@ -305,6 +314,13 @@ def startGame(path_uuid=None):
 
                 level_store.append(i)
                 level_store_uid_to_Elementid[e["uuid"]]=i
+
+                if "nbt" in e:
+                    if "interact" in e["nbt"]:
+                        interact_type=e["nbt"]["interact"]["sptype"]
+                        if (interact_type=="Interactive")|(interact_type=="OneTime-Interact"):
+                            keyPressInteractions.append((e["x"], e["y"],e["x"]+e["width"],e["y"]+e["height"],interact_type,e["nbt"]["interact"]["trigger"],e["nbt"]["interact"]["function"],e["uuid"]))
+
             elif e["type"] == "spawn":
                 render_loop.moveto(player, e["x"], e["y"])
             elif e["type"] == "bg_image":
@@ -795,6 +811,80 @@ def display_pause_menu():
     quitb = Button(render_loop, 100, 320, width=200, height=50, text="Quit", click_function=quit, font_size=35)
     return lambda p=play,q=quitb,lev=levsel,pt=pause_titel,:render_loop.removes([p,q,lev,pt])
 hide_display_pause_function=None
+
+
+keyConfig={
+    "Button-Interact_Main":(pygame.K_q,"Q"),
+    "Button-Interact_Second":(pygame.K_e,"E"),
+}
+
+last_interact_id=None
+last_interact_Kname=""
+interactdisplay_store={"text":None,"image":None}
+def displayInteractPreview(name,objectid):
+    global last_interact_Kname,last_interact_id
+
+    if not objectid:
+        if interactdisplay_store["text"]:
+            render_loop.removeElement(interactdisplay_store["text"])
+            render_loop.removeElement(interactdisplay_store["image"])
+            interactdisplay_store["text"]=None
+            interactdisplay_store["image"]=None
+            last_interact_id=None
+            last_interact_Kname=""
+        return
+
+    if objectid!=last_interact_id:
+
+
+
+        x,y=render_loop.getXY(objectid)
+
+
+        last_interact_Kname=name
+        last_interact_id=objectid
+        i=render_loop.addImage("imgs/press_button.png",x+10,y-20,uses_map_offset=True)
+        t=render_loop.addText(keyConfig[name][1],x+17,y-16,25,(215, 78, 9),uses_map_offset=True)
+        render_loop.addSchadowIgnore(t)
+        render_loop.addSchadowIgnore(i)
+        interactdisplay_store["image"]=i
+        interactdisplay_store["text"]=t
+
+
+
+
+def check_interaction(px,py,pressedKeys):
+    global player, player_surf, jumping, falling, escape_pressing, in_pause_menu
+    #format (estart,estart,eend,eend ,triger,function,uuid)
+    """(e["x"], e["y"], e["x"] + e["width"], e["y"] + e["height"], e["nbt"]["interact"], e["nbt"]["interact"]["trigger"],
+     e["nbt"]["interact"]["function"], e["uuid"])"""
+    print("All interacts:",keyPressInteractions)
+    if not in_pause_menu:
+        is_interactable=None
+        for inter in keyPressInteractions.copy():
+            e_x_start, e_y_start, e_x_end, e_y_end,type, trigger, function, uuid = inter
+
+            if keyConfig.get(trigger,"NO_KEY")[0] in  pressedKeys:
+
+                if (-INTERACTION_RADIUS+e_x_start<px+25<INTERACTION_RADIUS+e_x_end) and (-INTERACTION_RADIUS+e_y_start<py+25<INTERACTION_RADIUS+e_y_end):
+                    print("interacts")
+                    if type=="OneTime-Interact":
+
+                        keyPressInteractions.remove(inter)
+            else:
+                if (-INTERACTION_RADIUS + e_x_start < px + 25 < INTERACTION_RADIUS + e_x_end) and (
+                        -INTERACTION_RADIUS + e_y_start < py + 25 < INTERACTION_RADIUS + e_y_end):
+                    is_interactable=(trigger,uuid)
+                    print("dispaly interact preview",trigger)
+        if is_interactable:
+            trigger,uuid=is_interactable
+            displayInteractPreview(trigger, level_store_uid_to_Elementid[uuid])
+        else:
+            displayInteractPreview(None,None)
+
+    pass
+
+
 def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
     global player, jumping, jumpacseleration,escape_pressing,in_pause_menu,hide_display_pause_function
     """Function runs on every tick """
@@ -845,7 +935,7 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
         jump_s()
         BOUNCE_AREA_X = SCREEN_WIDTH // 2.4
         BAUCE_AREA_Y = SCREEN_HEIGHT // 3
-        print("BOUNCE",BAUCE_AREA_Y,BOUNCE_AREA_X)
+
 
         move(x,sprinting)
         px, py = render_loop.getXY(player)
@@ -858,6 +948,9 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
 
         render_loop.mod_map_ofset(-c1, c2)
         # print(check_death_areas(px,py),daeth_areas)
+
+
+        check_interaction(px,py,pressed_keys)
 
         if (check_finisch_areas(px, py)):
             print("finisch !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!S")
