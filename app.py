@@ -43,15 +43,21 @@ def title_screen(render_loop):
         render_loop.hides([play, load, quit, title, creadits])
         display_Credits()
 
+    xline1 = SCREEN_WIDTH / 2 - 100
+
+    title = render_loop.addText("My Game", xline1-40, 100, 90, )
+
+    def quit():
+        pygame.quit()
+        quit()
 
 
-    title = render_loop.addText("My Game", 280, 100, 90, )
 
-    play = Button(render_loop, 320, 200, width=200, height=50, text="Play", click_function=play, font_size=35)
+    play = Button(render_loop, xline1, 200, width=200, height=50, text="Play", click_function=play, font_size=35)
 
-    load = Button(render_loop, 320, 280, width=200, height=50, text="Load", click_function=None, font_size=35)
+    load = Button(render_loop, xline1, 280, width=200, height=50, text="Load", click_function=quit, font_size=35)
 
-    quit = Button(render_loop, 320, 360, width=200, height=50, text="Quit", click_function=None, font_size=35)
+    quit = Button(render_loop, xline1, 360, width=200, height=50, text="Quit", click_function=None, font_size=35)
 
     creadits = Button(render_loop, 0, 0, width=80, height=20, text="Creadits", click_function=cred, font_size=25)
     """checkbox2 = Checkbox(render_loop, 100, 230, width=20, height=20, label="Option 2")
@@ -176,8 +182,8 @@ def level_select_screen():
 
 
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 1200
+SCREEN_HEIGHT = 1000
 
 render_loop = GameRenderLoop(SCREEN_WIDTH, SCREEN_HEIGHT)
 
@@ -313,6 +319,11 @@ def startGame(path_uuid=None):
                     e["width"], e["height"]
 
                 ))
+
+            elif e["type"] == "light":
+                print("addedLight")
+
+                render_loop.addTorch(e["x"], e["y"],100)
             elif e["type"] == "level_finisch":
 
                 finisch_areas.append((
@@ -832,10 +843,13 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
         pushUp()
         gravity()
         jump_s()
+        BOUNCE_AREA_X = SCREEN_WIDTH // 2.4
+        BAUCE_AREA_Y = SCREEN_HEIGHT // 3
+        print("BOUNCE",BAUCE_AREA_Y,BOUNCE_AREA_X)
 
         move(x,sprinting)
         px, py = render_loop.getXY(player)
-        c1, c2 = calculate_map_correction(SCREEN_WIDTH, SCREEN_HEIGHT, 200, 200, px + render_loop.map_ofset_x,
+        c1, c2 = calculate_map_correction(SCREEN_WIDTH, SCREEN_HEIGHT, BOUNCE_AREA_X,BAUCE_AREA_Y ,px + render_loop.map_ofset_x,
                                           py + render_loop.map_ofset_y)
         # print(render_loop.getXY(player),)
         a1 = check_if_collisions(player_surf, x, y + 6, colidebles)

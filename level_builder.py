@@ -158,7 +158,9 @@ class CanvasApp:
 
         self.texture_data = [
             {"name": "🎯 Spawnpoint", "path": "imgs/spawnpoint.png", "type": "spawn", "collision": False,"folder":"actions/"},
-            {"name": "💀 Death-Area", "path": "imgs/death_area.png", "type": "death_area", "collision": False,"folder":"actions/"}
+            {"name": "💀 Death-Area", "path": "imgs/death_area.png", "type": "death_area", "collision": False,"folder":"actions/"},
+            {"name": " Light", "path": "imgs/light.png", "type": "light", "collision": False,
+             "folder": "actions/"}
         ]
         self.texture_data += [
             {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file, "type": "object", "collision": True,"folder":"blocks/"}

@@ -14,9 +14,24 @@ from objects.animation import Animation
 
 import json
 
+def get_files_in_folder(folder_path):
+    files = []
 
+    try:
+        # Get a list of all items in the folder
+        items = os.listdir(folder_path)
+
+        # Filter out only the files (not directories)
+        files = [item for item in items if os.path.isfile(os.path.join(folder_path, item))]
+
+    except OSError as e:
+        print("Error:", e)
+
+    return files
 class GameRenderLoop:
     def __init__(self, width, height):
+        self.lights =[]
+        self.shadow_store = {}
         self.shadow_textures = {}
         self.no_schadow_elements = []
         self.display_debug = False
@@ -32,6 +47,10 @@ class GameRenderLoop:
         self.elements = {}
         self.animation_colections = {}
         self.keypressfunction=None
+        self.light_templade=pygame.image.load("imgs/ShadowMaps/1.png")
+        self.light_templade_coise_colect=[]
+        for i in get_files_in_folder("imgs/ShadowMaps/"):
+            self.light_templade_coise_colect+=[pygame.image.load("imgs/ShadowMaps/"+i)]
         self.event_listeners = {}
         self.element_click_listeners = {}  # Store click listeners by element ID
         self.hidden_elements = {}  # Set to store hidden element IDs
@@ -248,30 +267,38 @@ class GameRenderLoop:
         return element_id
 
     def modify_translucent_areas(self,image, color):
+        """If an image doesnt work in the shadow"""
         color=self.schadow_intensity
         # Create a copy of the image to modify
-        modified_image = image.copy()
+        modified_image = image.convert()
         tr=False
+        hasTranclucensi=False
         for x in range(modified_image.get_width()):
             for y in range(modified_image.get_height()):
                 tr=True
 
                 pixel_color = modified_image.get_at((x, y))
-
+                mg=60
                 # Check if the pixel is fully translucent
-                if (pixel_color.a == 0):
+                if (pixel_color.r<=mg and pixel_color.g<=mg and pixel_color.b<=mg):
                     # Set color to white if translucent, else set the provided color
-
+                    hasTranclucensi=True
                     modified_image.set_at((x, y), (255,255,255,255))
 
                 else:
                     modified_image.set_at((x, y),(*color,255) )
+        """if not hasTranclucensi:
+            
+
+            modified_image.fill((255,0,0))"""
+
         print(modified_image.get_size())
-
-
-
-
         return modified_image
+
+    def addTorch(self,x,y,width,flickering_light=True):
+        self.lights+=[(x,y,width,flickering_light)]
+
+
     def addImageFixedWidth(self, path, x, y, width,height,uses_map_offset=True):
         
         
@@ -283,8 +310,12 @@ class GameRenderLoop:
         
         
         element_id = self.genId()
-
-        self.shadow_textures[element_id]=self.modify_translucent_areas(image, self.schadow_intensity)
+        if path not in self.shadow_store:
+            st=self.modify_translucent_areas(image, self.schadow_intensity)
+            self.shadow_textures[element_id]=st
+            self.shadow_store[path]=st
+        else:
+            self.shadow_textures[element_id]=self.shadow_store[path]
 
         self.elements[element_id]=( image, x, y,uses_map_offset)
         #print(image,element_id)
@@ -356,7 +387,26 @@ class GameRenderLoop:
         #polygon_points = []
         s=pygame.Surface((self.screen_width,self.screen_height))
         s.fill((255,255,255))
-        for obj_id in self.elements.copy():
+
+
+        def text(text,x,y):
+            font = pygame.font.Font(None, 16)  # You can replace None with a font file path
+
+            # Set the text you want to render
+
+
+            # Render the text onto the surface
+            text_render = font.render(text, True, (255, 255, 255))  # Text color: white
+
+            # Define the position where you want to render the text on the surface
+            text_position = (x,y)
+
+            # Blit (copy) the rendered text onto the surface
+            s.blit(text_render, text_position)
+
+
+
+        for n,obj_id in enumerate(self.elements.copy()):
             if obj_id in self.no_schadow_elements:
 
                 continue
@@ -387,16 +437,32 @@ class GameRenderLoop:
                 continue
             if obj_id in self.shadow_textures:
 
+
                 s.blit(self.shadow_textures[obj_id],(x,y))
+                """text(str(obj_id),x+10,y+10)"""
                 continue
+
+            """text("s-ERROR", x + 10, y + 10)"""
 
             surf=self.getSurface(obj_id)
 
+        for n,light in enumerate(self.lights):
+            x,y,w,flickers=light[0],light[1],light[2],light[3]
+            x, y = self.map_ofset_x + x, self.map_ofset_y + y
+            if not ((-100 < x - 50 < self.width) & (-100 < y - 50 < self.height)):
+                print(n,"not in sight")
+                continue
+            lightLayer=self.light_templade
+            """if flickers:
+                lightLayer=random.choices(self.light_templade_coise_colect)[0]
+            """
+
+            s.blit(pygame.transform.scale(lightLayer,(w*2,w*2)),(x-w-25,y-w-25))
+            #pygame.draw.circle(s, (255,255,255,255),(x-w-25,y-w-25),w)
 
 
 
 
-            #pygame.draw.rect(s, self.schadow_intensity, (x,y,surf.get_width(),surf.get_height()))
 
         # Create a surface to draw the polygon
         #polygon_surface = pygame.Surface((max_x - min_x, max_y - min_y), pygame.SRCALPHA)
