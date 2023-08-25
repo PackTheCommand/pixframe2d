@@ -664,6 +664,7 @@ class CanvasApp:
 
             self.elements_path_area_label.configure(text=path_str)
             for index, texture in enumerate(self.texture_data):
+                if not texture["path"].endswith(".png"): continue
 
                 print(texture)
                 if texture["folder"] != path_str:

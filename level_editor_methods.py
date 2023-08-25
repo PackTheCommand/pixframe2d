@@ -74,7 +74,7 @@ def save_file_dialog():
     root = tk.Tk()
     root.withdraw()  # Hide the main window
 
-    file_path = filedialog.asksaveasfilename(defaultextension=".levdat", filetypes=[("Level Data Files", "*.levdat")])
+    file_path = filedialog.askdirectory(initialdir=os.getcwd(), title="Select a LevelSave")
 
     return file_path
 

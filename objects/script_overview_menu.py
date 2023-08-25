@@ -61,13 +61,13 @@ class UIWindow:
         self.save_button.pack(side="bottom")
 
     def add_entry(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Python and Lua Files", "*.py *.lua")])
+        file_path = filedialog.askopenfilename(filetypes=[("Python and Lua Files", "*.py *.lua")],initialdir=os.getcwd()+"/leveldata",title="Select Script")
         print("se",os.getcwd())
         file_path=file_path.replace("\\","/").replace(os.getcwd().replace("\\","/"),"")
         print(file_path)
         if file_path:
 
-            entry = {"name": file_path.split("/")[-1], "path": file_path, "permissions": []}
+            entry = {"name": file_path.split("/")[-1], "path": file_path.replace("/","\\").split("/")[-1], "permissions": []}
             self.entries.append(entry)
             self.display_entries()
     def renewEntrys(self,new):
