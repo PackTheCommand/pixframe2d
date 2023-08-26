@@ -9,8 +9,8 @@ import tkinter.font as tkfont
 from PIL import Image, ImageTk
 from PIL import ImageDraw
 
-from mygame.objects.editWindow import EditWindow
-import objects.script_overview_menu as script_overview_menu
+from mygame.interfaces.editWindow import EditWindow
+import interfaces.script_overview_menu as script_overview_menu
 
 G_WIDTH = 800
 G_HEIGHT = 600
@@ -21,7 +21,7 @@ from level_editor_methods import *
 
 import ui_code
 
-from objects.objectPropertiesMenu import ObjectPropertiesMenu
+from interfaces.objectPropertiesMenu import ObjectPropertiesMenu
 
 folders = {"main": {"deco": {}, "blocks": {}, "actions": {}, }}
 
@@ -48,6 +48,7 @@ class CanvasApp:
 
         self.tempANY_store = None
         self.preview_point = None
+        self.loaded_from_file=False
 
         # sv_ttk.set_theme("dark")
 
@@ -203,7 +204,7 @@ class CanvasApp:
         # tab 1
 
         general_setingsTab = ttk.Frame(editor_tabs_book)
-        import objects.general_level_setings_menu as glsm
+        import interfaces.general_level_setings_menu as glsm
 
         self.general_setings_menu = glsm.GeneralLevelSetings_Window(general_setingsTab, self.level_matadata,
                                                                     lambda _, e: ())
@@ -299,7 +300,7 @@ class CanvasApp:
                                               relief="flat", bg='#87D68D', fg='white')
         self.send_to_front_button.pack(side=tk.LEFT)
 
-        self.scriptWIN = script_overview_menu.UIWindow(scripts_frame)
+        self.scriptWIN = script_overview_menu.UIWindow(scripts_frame,self)
 
         checked_state = tk.BooleanVar()
         checked_state.set(True)
@@ -753,7 +754,7 @@ class CanvasApp:
     def load_elements(self, file=None, saveMode=False):
         try:
             if not file:
-                ask = open_file_dialog()
+                ask = ask_dir_dialog()
                 if not ask:
                     return
             else:
@@ -765,7 +766,7 @@ class CanvasApp:
             self.path_metadata = []
             self.create_cordnateSystem()
 
-            with open(ask) as f:
+            with open(ask+"/level.levdat") as f:
                 level_json = json.load(f)
             """
             Note Save mode doesnt check all properties of the json file
@@ -1042,19 +1043,19 @@ class CanvasApp:
 
         def open_context_menu(event):
             context_menu = tk.Menu(root, tearoff=0)
-            context_menu.add_command(label="Edit Interaction", command=action_1)
-            context_menu.add_command(label="ER_MISSING", command=action_2)
+            context_menu.add_command(label="Edit Interaction", command=lambda i=selected_element[0]:action_1(i))
+            context_menu.add_command(label="Edit plain NBT", command=lambda i=selected_element[0]:action_2(i))
             context_menu.add_separator()
             context_menu.add_command(label="ER_MISSING", command=action_3)
 
             context_menu.tk_popup(event.x_root, event.y_root)
 
-        def action_1():
+        def action_1(id):
 
             def on_done(tab,id, dict, Save):
                 self.editor_tabs_book.forget(tab)
                 if Save:
-                    object_ = [o for o in self.elements if o["id"] == id]
+                    object_ = [o for o in self.elements if id == id]
                     if object_:
                         if dict["sptype"] == "None":
 
@@ -1077,8 +1078,11 @@ class CanvasApp:
 
             print("Action 1 selected")
 
-        def action_2():
-            print("Action 2 selected")
+        def action_2(id):
+            import interfaces.nbt_directEdit
+            obj = [o for o in self.elements if o["id"] == id][0]
+            if "nbt" in obj:
+                nbt_win=interfaces.nbt_directEdit.nbt_directEdit(obj, )
 
         def action_3():
             print("Action 3 sele")
@@ -1115,10 +1119,18 @@ class CanvasApp:
         self.canvas.unbind("<ButtonRelease-2>")
 
     def save_elements(self, force=False):
+
         print("Saved elements:")
 
+
+
+
         if ((not self.save_path) | force):
-            sf = save_file_dialog()
+
+            sf = ask_dir_dialog()
+            os.mkdir(sf+"/resources")
+            os.mkdir(sf + "/scripts")
+
         else:
             sf = self.save_path
         if not sf:
@@ -1127,8 +1139,8 @@ class CanvasApp:
         self.root.title("Editing - " + sf.split("/")[-1])
 
         pp = self.object_pathstore
-
-        with open(sf, "w") as f:
+        self.loaded_from_file=True
+        with open(sf+"/level.levdat", "w") as f:
             if self.bg_image:
                 json.dump(
                     {"elements": [{"type": "bg_image", "texture": self.bg_image_path}] + self.elements, "paths": pp,

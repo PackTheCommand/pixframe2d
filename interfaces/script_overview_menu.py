@@ -34,11 +34,12 @@ class PermissionWindow:
         self.window.destroy()
 
 class UIWindow:
-    def __init__(self, root):
+    def __init__(self, root,editor_class):
         self.root = root
 
 
         self.entries = []
+        self.editor_class = editor_class
 
         self.scroll_frame = ttk.Frame(root)
         self.scroll_frame.pack(side="top", fill="both", expand=True)
@@ -63,7 +64,7 @@ class UIWindow:
     def add_entry(self):
         file_path = filedialog.askopenfilename(filetypes=[("Python and Lua Files", "*.py *.lua")],initialdir=os.getcwd()+"/leveldata",title="Select Script")
         print("se",os.getcwd())
-        file_path=file_path.replace("\\","/").replace(os.getcwd().replace("\\","/"),"")
+        file_path=file_path.replace("\\","/")[::-1].split("/")[0][::-1]
         print(file_path)
         if file_path:
 

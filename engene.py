@@ -1,4 +1,3 @@
-import enum
 import math
 import os
 import random
@@ -8,9 +7,9 @@ import time
 import pygame
 import sys
 
-from pygame import KEYDOWN, KEYUP, BLEND_RGBA_ADD, BLEND_RGBA_SUB, BLEND_RGBA_MULT
+from pygame import KEYDOWN, KEYUP, BLEND_RGBA_MULT
 
-from objects.animation import Animation
+from mygame.objects.animation import Animation
 
 import json
 
@@ -54,7 +53,7 @@ class GameRenderLoop:
         self.event_listeners = {}
         self.element_click_listeners = {}  # Store click listeners by element ID
         self.hidden_elements = {}  # Set to store hidden element IDs
-        self.font_cache = {}  # Cache font objects for different sizes
+        self.font_cache = {}  # Cache font interfaces for different sizes
         self.scedue_queue = []
         self.debug_interface_function=None
         self.menu_elements=[]

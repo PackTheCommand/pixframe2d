@@ -19,6 +19,23 @@ from ui_elements import Button, TextInput, Checkbox
 
 import movable_objects
 
+class Level():
+    def __init__(self):
+        self.objects = []
+        self.metadatas = []
+        self.objectsUID_to_id={}
+        self.nbts={}
+    def addLight(self,x,y,radius,color):
+
+        render_loop.addTorch(x,y,radius)
+
+
+
+
+
+
+
+
 def title_screen(render_loop):
     def clear_content():
         nonlocal render_loop
@@ -133,9 +150,11 @@ def display_Credits():
 
 
 
-
+level=None
 
 def level_select_screen():
+
+
 
     def load_levl(lev_file_path):
 
@@ -259,11 +278,14 @@ level_store_uid_to_Elementid={}
 
 # (x,y,width,height,KeyName)
 keyPressInteractions=[]
-
+levelOBJ=None
+scriptsManagers= {}
 from audio import definebgMusic
 from scripting import scriptManager
 def startGame(path_uuid=None):
-    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation,level_store_uid_to_Elementid
+    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation,level_store_uid_to_Elementid,levelOBJ,scriptsManagers
+
+    levelOBJ = Level()
     if path_uuid == None:
         path_uuid = currant_game_file
     currant_game_file = path_uuid
@@ -288,15 +310,20 @@ def startGame(path_uuid=None):
 
 
 
-    scriptsManagers=[]
+    scriptsManagers= {}
     for script in scripts:
         if script["path"].split(".")[-1]=="py":
-            scriptsManagers.append(scriptManager.pyManager(script["path"],render_loop,player))
+            pass
+            #scriptsManagers.append(scriptManager.pyManager(script["path"],path_uuid+"/scripts",render_loop,player))
+        elif  script["path"].split(".")[-1]=="lua":
+            name=script["path"][::-1].split(".",1)[1][::-1]
+            scriptsManagers[name]=scriptManager.lua_Importer(name+".lua",path_uuid+"/scripts",render_loop,player)
 
 
     def genLevel(level):
         global level_store_uid_to_Elementid
         global colidebles, level_store
+
 
         level_store = []
         colidebles = {}
@@ -321,6 +348,7 @@ def startGame(path_uuid=None):
                         if (interact_type=="Interactive")|(interact_type=="OneTime-Interact"):
                             keyPressInteractions.append((e["x"], e["y"],e["x"]+e["width"],e["y"]+e["height"],interact_type,e["nbt"]["interact"]["trigger"],e["nbt"]["interact"]["function"],e["uuid"]))
 
+                    levelOBJ.nbts[e["uuid"]]=e["nbt"]
             elif e["type"] == "spawn":
                 render_loop.moveto(player, e["x"], e["y"])
             elif e["type"] == "bg_image":
@@ -352,6 +380,10 @@ def startGame(path_uuid=None):
         return colidebles
 
     ll = genLevel(level["elements"])
+
+    levelOBJ.objectsUID_to_id=level_store_uid_to_Elementid
+    levelOBJ.objects=level_store
+
 
     level_metadata=level["level-metadata"]
 
@@ -390,8 +422,9 @@ def startGame(path_uuid=None):
                     movable_objects.addAnimatedObject(render_loop, level_store_uid_to_Elementid[bound_to], anima)
 
     for script in scriptsManagers:
-        script.setLEVconstants(level_store_uid_to_Elementid,level_store)
-        script.start()
+        scriptsManagers[script].api.Objects.uuid_to_id=level_store_uid_to_Elementid
+        #script.setLEVconstants(level_store_uid_to_Elementid,level_store)
+        scriptsManagers[script].start(levelOBJ)
 
 
     render_loop.set_scedue(movable_objects.run_animation)
@@ -858,7 +891,14 @@ def check_interaction(px,py,pressedKeys):
     #format (estart,estart,eend,eend ,triger,function,uuid)
     """(e["x"], e["y"], e["x"] + e["width"], e["y"] + e["height"], e["nbt"]["interact"], e["nbt"]["interact"]["trigger"],
      e["nbt"]["interact"]["function"], e["uuid"])"""
-    print("All interacts:",keyPressInteractions)
+    def doInteractFunc(func_name):
+
+        file,func=func_name.split(".",1)
+        func=func.split(";",1)[0]  #security mesure to prevent script injection
+        if file in scriptsManagers:
+            scriptsManagers[file].runtime.eval(func)
+
+
     if not in_pause_menu:
         is_interactable=None
         for inter in keyPressInteractions.copy():
@@ -871,11 +911,14 @@ def check_interaction(px,py,pressedKeys):
                     if type=="OneTime-Interact":
 
                         keyPressInteractions.remove(inter)
+                    if function:
+                        doInteractFunc(function)
             else:
                 if (-INTERACTION_RADIUS + e_x_start < px + 25 < INTERACTION_RADIUS + e_x_end) and (
                         -INTERACTION_RADIUS + e_y_start < py + 25 < INTERACTION_RADIUS + e_y_end):
                     is_interactable=(trigger,uuid)
-                    print("dispaly interact preview",trigger)
+
+
         if is_interactable:
             trigger,uuid=is_interactable
             displayInteractPreview(trigger, level_store_uid_to_Elementid[uuid])

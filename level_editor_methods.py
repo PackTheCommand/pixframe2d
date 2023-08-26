@@ -70,7 +70,7 @@ def returnScrollFrame(master, height):
     canvas.bind("<Configure>", update_scroll_region)
 
     return inner_frame, canvas
-def save_file_dialog():
+def ask_dir_dialog():
     root = tk.Tk()
     root.withdraw()  # Hide the main window
 
