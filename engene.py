@@ -3,7 +3,7 @@ import os
 import random
 import threading
 import time
-
+import moviepy.editor as mp
 import pygame
 import sys
 
@@ -27,25 +27,45 @@ def get_files_in_folder(folder_path):
         print("Error:", e)
 
     return files
+
+import services.dialog_service
 class GameRenderLoop:
     def __init__(self, width, height):
+        self.in_dialog = False
+        self.in_cutsene = False
         self.lights =[]
+        self.pause_gameplay_level_engene=False
+        self.break_any_non_game_mode = False
         self.shadow_store = {}
         self.shadow_textures = {}
         self.no_schadow_elements = []
         self.display_debug = False
+        self.render_overwrite=None
+        self.level=None
+
+
+
+
+
+
 
         self.screen_width, self.screen_height=width,height
         pygame.init()
         self.width = width
         self.map_ofset_x,self.map_ofset_y=0,0
         self.height = height
-        self.screen = pygame.display.set_mode((width, height),vsync=1)
+        self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE,vsync=1)
         self.clock = pygame.time.Clock()
         self.schadow_intensity=(100,100,100)
         self.elements = {}
         self.animation_colections = {}
         self.keypressfunction=None
+
+        self.dialog_service = services.dialog_service.DialogService(self)
+
+
+
+
         self.light_templade=pygame.image.load("imgs/ShadowMaps/1.png")
         self.light_templade_coise_colect=[]
         for i in get_files_in_folder("imgs/ShadowMaps/"):
@@ -61,8 +81,15 @@ class GameRenderLoop:
 
         self.scheduled_events = []
 
+    def set_pause_ANY_CUTSENE_DIALOG(self,state):
+        self.break_any_non_game_mode = state
+
     def addSchadowIgnore(self,id):
         self.no_schadow_elements.append(id)
+
+
+    def REQUEST_STATUS_IN_NOT_GAME_MODE(self):
+        return self.in_dialog or self.in_cutsene
 
     def after(self, duration, function):
         scheduled_time = pygame.time.get_ticks() + duration
@@ -244,15 +271,15 @@ class GameRenderLoop:
         d={}
         sub_shadows={}
         for subani in animation["subanimations"]:
-            d[subani]=[]
+            d[subani]= {"imgs":[],"delay":animation["subanimations"][subani]["delay"]}
             sub_shadows[subani]=[]
             for frame in animation["subanimations"][subani]["frames"]:
                 image = pygame.image.load("imgs/"+frame["path"])
                 image = pygame.transform.scale(image, (int(image.get_width() * scale_x), int(image.get_height() * scale_y)))
-                d[subani] +=[image]
+                d[subani]["imgs"] +=[image]
                 sub_shadows[subani] +=[self.craete_manual_shadow_image(image)]
         element_id = self.genId()
-        animationObj=Animation(l,animation["speed"],d,element_id,shadow_images,sub_shadows)
+        animationObj=Animation(l,animation["delay"],d,element_id,shadow_images,sub_shadows)
         self.animation_colections[element_id]=animationObj
         self.elements[element_id]=( animationObj, x, y,uses_map_offset)
         return element_id,animationObj
@@ -264,11 +291,46 @@ class GameRenderLoop:
 
         self.elements[element_id]=( image, x, y,uses_map_offset)
         return element_id
+    def playCutScene(self,file):
+
+        try:
+            self.togleSchadows(False)
+            self.cutscene_file=file
+            self.in_cutsene=True
+            self.cutsine_clip=mp.VideoFileClip(file)
+
+
+
+
+            self.cutseneindex=0
+
+        except Exception as e:
+            print(e)
+            self.in_cutsene=False
+            self.cutscene_file=None
+            self.togleSchadows(True)
+            self.cutsine_clip=None
+            return "error"
+
+    def iter_Cutsene(self):
+
+        #ifself.cutsine_clip.is_playing(self.cutseneindex):
+        #    return "end"
+        print(self.cutsine_clip.end)
+        if self.cutsine_clip.end<=self.cutseneindex/60:
+            return "end"
+
+        frame =self.cutsine_clip.get_frame(self.cutseneindex/60)
+        self.cutseneindex+=1
+        return pygame.image.frombuffer(frame, frame.shape[1::-1], "RGB")
+
+        #except:
+        #    return "end"
 
     def modify_translucent_areas(self,image, color):
         """If an image doesnt work in the shadow"""
         color=self.schadow_intensity
-        # Create a copy of the image to modify
+
         modified_image = image.convert()
         tr=False
         hasTranclucensi=False
@@ -278,7 +340,7 @@ class GameRenderLoop:
 
                 pixel_color = modified_image.get_at((x, y))
                 mg=60
-                # Check if the pixel is fully translucent
+
                 if (pixel_color.r<=mg and pixel_color.g<=mg and pixel_color.b<=mg):
                     # Set color to white if translucent, else set the provided color
                     hasTranclucensi=True
@@ -457,16 +519,6 @@ class GameRenderLoop:
             """
 
             s.blit(pygame.transform.scale(lightLayer,(w*2,w*2)),(x-w-25,y-w-25))
-            #pygame.draw.circle(s, (255,255,255,255),(x-w-25,y-w-25),w)
-
-
-
-
-
-        # Create a surface to draw the polygon
-        #polygon_surface = pygame.Surface((max_x - min_x, max_y - min_y), pygame.SRCALPHA)
-
-        #c=pygame.draw.rect(s,(100,100,100), (0,0,self.screen_width,self.screen_height))
 
         s.set_colorkey((0,0,0))
         return s
@@ -495,7 +547,7 @@ class GameRenderLoop:
     def getUsesMapOfset(self,id):
         if id in self.elements:
             return self.elements[id][3]
-    def run(self):
+    def run(self,updateparmsFunc):
         self.running = True
         def scedue():
 
@@ -515,7 +567,15 @@ class GameRenderLoop:
             self.process_scheduled_events()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    self.running = False
+                    self.running = False#
+                elif (event.type == pygame.VIDEORESIZE)|(event.type==pygame.FULLSCREEN):
+                    # Handle window resizing
+                    pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE,vsync=1)
+                    self.width,self.height=event.w,event.h
+                    self.screen_width,self.screen_height=event.w,event.h
+                    print(event)
+                    updateparmsFunc(event.w,event.h)
+
                 elif event.type == KEYDOWN:
                     presse_triger_once+=[event.key]
 
@@ -554,30 +614,47 @@ class GameRenderLoop:
 
 
 
-            for element_id in self.elements.copy() :
-                if element_id not in self.elements:
-                    continue
-                #print(element_id)
-                #print(self.elements[element_id],element_id)
-                element, x, y,uses_map_ofset = self.elements[element_id]
-                if isinstance(element, pygame.Surface):
-                    if uses_map_ofset:
-                        self.screen.blit(element, (self.map_ofset_x+x, self.map_ofset_y+y))
 
 
-                    else:
+            if (not self.pause_gameplay_level_engene):
+                for element_id in self.elements.copy() :
+                    if element_id not in self.elements:
+                        continue
+                    #print(element_id)
+                    #print(self.elements[element_id],element_id)
+                    element, x, y,uses_map_ofset = self.elements[element_id]
+                    if isinstance(element, pygame.Surface):
+                        if uses_map_ofset:
+                            self.screen.blit(element, (self.map_ofset_x+x, self.map_ofset_y+y))
 
-                        self.screen.blit(element, (x,y))
-                elif isinstance(element, Animation):
 
-                    element=element.getImage()
-                    if uses_map_ofset:
-                        self.screen.blit(element, (self.map_ofset_x + x, self.map_ofset_y + y))
+                        else:
+
+                            self.screen.blit(element, (x,y))
+                    elif isinstance(element, Animation):
+
+                        element=element.getImage()
+                        if uses_map_ofset:
+                            self.screen.blit(element, (self.map_ofset_x + x, self.map_ofset_y + y))
 
 
-                    else:
+                        else:
 
-                        self.screen.blit(element, (x, y))
+                            self.screen.blit(element, (x, y))
+
+            if self.in_cutsene&(not self.break_any_non_game_mode):
+                frame = self.iter_Cutsene()
+
+                if frame != "end":
+                    self.screen.blit(frame, (0, 0))
+
+                else:
+                    self.in_cutsene = False
+                    self.togleSchadows(True)
+            elif (self.in_dialog)&(not self.break_any_non_game_mode):
+                self.dialog_service.while_dialog(presse_triger_once,self.screen)
+                pass
+
 
             if self.debug_interface_function:
 

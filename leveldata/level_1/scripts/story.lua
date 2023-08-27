@@ -2,6 +2,6 @@ print("lua runs")
 
 function clicked()
 
-    print("clicked")
-    print(api.Player)
+    api.playDialog("$levdir/resources/dialogs/a_beginning/dialog1.json")
+    --[[playCutScene("$levdir/resources/cutsenes/test.mkv")]]
     end

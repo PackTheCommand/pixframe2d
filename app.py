@@ -1,8 +1,9 @@
 import json
 import threading
 
+import mygame.scripting.objects.objectCol
+from mygame.scripting.objects.level import Level
 from audio import sound
-from mygame import audio
 
 
 INTERACTION_RADIUS=50
@@ -10,30 +11,12 @@ INTERACTION_RADIUS=50
 with open("leveldata/levels.json") as f:
     all_level_overview_json = json.load(f)
 
-import keyboard
 import pygame
-from pygame import K_UP, K_DOWN, K_LEFT, K_RIGHT
 
 from engene import GameRenderLoop, SCHADOW_STATE
-from ui_elements import Button, TextInput, Checkbox
+from ui_elements import Button
 
 import movable_objects
-
-class Level():
-    def __init__(self):
-        self.objects = []
-        self.metadatas = []
-        self.objectsUID_to_id={}
-        self.nbts={}
-    def addLight(self,x,y,radius,color):
-
-        render_loop.addTorch(x,y,radius)
-
-
-
-
-
-
 
 
 def title_screen(render_loop):
@@ -207,6 +190,12 @@ def level_select_screen():
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 1000
 
+
+
+def updateHeightWidth(w,h):
+    global SCREEN_WIDTH,SCREEN_HEIGHT
+    SCREEN_WIDTH, SCREEN_HEIGHT = w,h
+
 render_loop = GameRenderLoop(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 
@@ -214,8 +203,6 @@ render_loop = GameRenderLoop(SCREEN_WIDTH, SCREEN_HEIGHT)
 def onclick():
     pass
 
-
-import level_map
 
 """def startGame():
     global level,s
@@ -234,7 +221,7 @@ import level_map
 space_jump=False
 space_tick=0"""
 
-
+globalStore={}
 def get_collisions(main_surface, main_id, other_surfaces):
     collisions = []
     mr = main_surface.get_rect()
@@ -269,7 +256,6 @@ musicBG_tile,musicBG_author="",""
 
 player = None
 daeth_areas = []
-import mutagen
 currant_game_file = ""
 backgroundMusic=None
 player_animation=None
@@ -285,7 +271,8 @@ from scripting import scriptManager
 def startGame(path_uuid=None):
     global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation,level_store_uid_to_Elementid,levelOBJ,scriptsManagers
 
-    levelOBJ = Level()
+    levelOBJ = Level(render_loop)
+    render_loop.level=levelOBJ
     if path_uuid == None:
         path_uuid = currant_game_file
     currant_game_file = path_uuid
@@ -317,10 +304,10 @@ def startGame(path_uuid=None):
             #scriptsManagers.append(scriptManager.pyManager(script["path"],path_uuid+"/scripts",render_loop,player))
         elif  script["path"].split(".")[-1]=="lua":
             name=script["path"][::-1].split(".",1)[1][::-1]
-            scriptsManagers[name]=scriptManager.lua_Importer(name+".lua",path_uuid+"/scripts",render_loop,player)
+            scriptsManagers[name]=scriptManager.lua_Importer(name+".lua",path_uuid+"/scripts",render_loop,player,{"stop_sound":pauseAll})
 
 
-    def genLevel(level):
+    def genLevel(level,):
         global level_store_uid_to_Elementid
         global colidebles, level_store
 
@@ -352,10 +339,12 @@ def startGame(path_uuid=None):
             elif e["type"] == "spawn":
                 render_loop.moveto(player, e["x"], e["y"])
             elif e["type"] == "bg_image":
-                i = render_loop.addImageFixedWidth(e["texture"], 0,0,SCREEN_WIDTH,SCREEN_HEIGHT, uses_map_offset=False)
+                i = render_loop.addImageFixedWidth(e["texture"], 0,0,1920,1080
+                                                   , uses_map_offset=False)
                 render_loop.addSchadowIgnore(i)
                 render_loop.lower(i)
                 level_store += [i]
+
             elif e["type"] == "death_area":
 
                 daeth_areas.append((
@@ -383,6 +372,7 @@ def startGame(path_uuid=None):
 
     levelOBJ.objectsUID_to_id=level_store_uid_to_Elementid
     levelOBJ.objects=level_store
+    levelOBJ.path=path_uuid
 
 
     level_metadata=level["level-metadata"]
@@ -422,7 +412,7 @@ def startGame(path_uuid=None):
                     movable_objects.addAnimatedObject(render_loop, level_store_uid_to_Elementid[bound_to], anima)
 
     for script in scriptsManagers:
-        scriptsManagers[script].api.Objects.uuid_to_id=level_store_uid_to_Elementid
+        mygame.scripting.objects.objectCol.Objects.uuid_to_id=level_store_uid_to_Elementid
         #script.setLEVconstants(level_store_uid_to_Elementid,level_store)
         scriptsManagers[script].start(levelOBJ)
 
@@ -947,18 +937,24 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
         in_pause_menu= not in_pause_menu
 
         if in_pause_menu:
+            render_loop.set_pause_ANY_CUTSENE_DIALOG(True)
             hide_display_pause_function=display_pause_menu()
         else:
+            render_loop.set_pause_ANY_CUTSENE_DIALOG(False)
             hide_display_pause_function()
 
 
 
 
-    if not in_pause_menu:
+    if (not in_pause_menu)|(not render_loop.REQUEST_STATUS_IN_NOT_GAME_MODE()):
         if pygame.K_a in pressed_keys:
             x -= 1
         if pygame.K_d in pressed_keys:
             x += 1
+
+
+        if pygame.K_w in pressed_keys:
+            player_animation.play("attack")
 
         if pygame.K_s in pressed_keys:
             sprinting=True
@@ -1016,4 +1012,4 @@ title_screen(render_loop)
 render_loop.debug_interface_function = on_debub_ON
 render_loop.togleSchadows(SCHADOW_STATE.OFF)
 # display_start_screen(render_loop)
-render_loop.run()
+render_loop.run(updateHeightWidth)

@@ -34,7 +34,7 @@ class Animation:
         self.loop_sub=False
         self.subAnimation_counter=0
         self.subAnimation_index=0
-        self.subAnimation_len=len(self.subAnimations[name])
+        self.subAnimation_len=len(self.subAnimations[name]["imgs"])
         self.current_subAnimation = self.subAnimations[name]
     def get_width(self):
         return self.images[0].get_width()
@@ -60,7 +60,7 @@ class Animation:
     def getSubAnimation(self):
         self.subAnimation_counter+=1
         self.sub_remain_loop_times -= 1
-        if self.subAnimation_counter >= self.frametime:
+        if self.subAnimation_counter >= self.current_subAnimation["delay"]:
             self.subAnimation_counter = 0
 
             self.subAnimation_index+=1
@@ -75,5 +75,5 @@ class Animation:
 
         print(self.subAnimation_index,self.subAnimation_len)
 
-        return self.current_subAnimation[self.subAnimation_index]
+        return self.current_subAnimation["imgs"][self.subAnimation_index]
 

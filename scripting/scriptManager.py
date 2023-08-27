@@ -1,16 +1,19 @@
 import importlib.util
-import sys
 
 import lupa
 
-from .scriptAPI import playGround
+import mygame.scripting.objects.objectCol
+import mygame.scripting.objects.player
+from mygame.scripting.objects.api import API
+
+
 class pyManager:
     def __init__(self,name,path,render_loop,playerId):
         self.name = name
         self.path = path
         self.playground=None
 
-        api = API()
+        api = API(render_loop)
         self.api=api
         api.Player = playerId
 
@@ -41,33 +44,6 @@ class pyManager:
         self.Import()
 
 
-class API:
-    def __init__(self):
-        self.Player:object
-        self.Objects:object
-        self.level:object
-        self.VERSION:str
-        self.uuidTO_EL_ID:dict
-
-    def getIDbyUUID(self,uuid):
-        if uuid in self.uuidTO_EL_ID:
-            return self.uuidTO_EL_ID[uuid]
-
-
-    def uuids_getObject_where_NBT(self,datatag):
-
-        nbts=self.level.nbts
-        return [nbt for nbt in nbts if datatag in nbts[nbt]]
-
-
-    def ids_getObject_where_NBT(self,datatag):
-        nbts = self.level.nbts
-        return [self.uuidTO_EL_ID[uuid] for uuid in nbts if datatag in nbts[uuid]]
-
-
-
-
-
 def restricted_lua_environment():
     lua = lupa.LuaRuntime(unpack_returned_tuples=True,)
 
@@ -78,16 +54,17 @@ def restricted_lua_environment():
     return lua
 
 class lua_Importer:
-    def __init__(self,name,path,render_loop,playerId):
+    def __init__(self,name,path,render_loop,playerId,importantArtibutes=None):
         with open(path+"/"+name, "r", encoding="utf-8") as f:
             self.contents=f.read()
 
-        plg=playGround
+
         self.runtime=None
-        api = API()
+        api = API(render_loop)
         self.api = api
-        api.Player = plg.Player(render_loop,playerId)
-        api.Objects = plg.Objects(render_loop,)
+        api.stopSound=importantArtibutes["stop_sound"]
+        api.Player = mygame.scripting.objects.player.Player(render_loop, playerId)
+        api.Objects = mygame.scripting.objects.objectCol.Objects(render_loop, )
         api.VERSION = "S1.B.0"
 
         pass

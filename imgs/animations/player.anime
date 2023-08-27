@@ -1,21 +1,56 @@
-{"frames":[
-  {
-    "path": "animations/player_idle/1.png"
-  },
 {
-    "path": "animations/player_idle/2.png"
-  },
-{
-    "path": "animations/player_idle/3.png"
-  }
-],"speed":10,"subanimations":{"walk": {
-  "frames":[
-  {
-    "path": "animations/player_run/1.png"
-  },
-    {
-    "path": "animations/player_run/2.png"
-  }
-  ],"speed":10
-
-}}}
+   "frames":[
+      {
+         "path":"animations/player_idle/1.png"
+      },
+      {
+         "path":"animations/player_idle/2.png"
+      },
+      {
+         "path":"animations/player_idle/3.png"
+      }
+   ],
+   "delay":10,
+   "subanimations":{
+      "walk":{
+         "frames":[
+            {
+               "path":"animations/player_run/1.png"
+            },
+            {
+               "path":"animations/player_run/2.png"
+            }
+         ],
+         "delay":10
+      },
+      "attack":{
+         "frames":[
+            {
+               "path":"animations/player_sword_swing/0.png"
+            },
+            {
+               "path":"animations/player_sword_swing/1.png"
+            },
+            {
+               "path":"animations/player_sword_swing/2.png"
+            },
+            {
+               "path":"animations/player_sword_swing/3.png"
+            },
+            {
+               "path":"animations/player_sword_swing/4.png"
+            },
+            {
+               "path":"animations/player_sword_swing/5.png"
+            },
+            {
+               "path":"animations/player_sword_swing/6.png"
+            },
+            {
+               "path":"animations/player_sword_swing/7.png"
+            }
+         ],
+         "delay":3
+      }
+   }
+}
