@@ -21,9 +21,12 @@ class API:
         self.__renderloop.playCutScene(file.replace("$levdir",self.level.path))
 
 
-    def playDialog(self,file):
+    def playDialog(self,file,excludeObjects=True):
         self.stopSound()
-        self.__renderloop.dialog_service.run_dialog(file)
+        if excludeObjects:
+            self.__renderloop.dialog_service.run_dialog(file)
+        else:
+            self.__renderloop.dialog_service.run_dialog_in_game(file)
     def getIDbyUUID(self,uuid):
         if uuid in self.uuidTO_EL_ID:
             return self.uuidTO_EL_ID[uuid]

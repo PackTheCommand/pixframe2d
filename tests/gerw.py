@@ -1,71 +1,48 @@
 import pygame
-from pygame.locals import *
-from OpenGL.GL import *
-from OpenGL.GL.shaders import *
+import math
 
-# Initialize Pygame
+def draw_percent_circle(screen, center, radius, procent, color, start_angle=0):
+    total_value = sum(segment_values)
+    angle_per_value = 360 / total_value
+
+    current_angle = start_angle
+
+    i, value = 0,procent
+    angle = value * angle_per_value
+
+
+    # Calculate the points of the pie slice
+    points = [center]
+    num_points = int(angle) + 2
+    for j in range(num_points):
+        angle_rad = math.radians(current_angle + (j / (num_points - 1)) * angle)
+        x = center[0] + radius * math.cos(angle_rad)
+        y = center[1] + radius * math.sin(angle_rad)
+        points.append((x, y))
+
+
+    pygame.draw.polygon(screen, color, points)
+    current_angle += angle
+
+    pygame.display.flip()
+
+# Example usage:
 pygame.init()
+screen = pygame.display.set_mode((400, 400))
+clock = pygame.time.Clock()
 
-# Window dimensions
-WIDTH, HEIGHT = 800, 600
+segment_values = [10,90]
+colors = [(255, 255, 0),(0,0,0)]
 
-# Create a Pygame window
-screen = pygame.display.set_mode((WIDTH, HEIGHT), DOUBLEBUF | OPENGL)
+draw_percent_circle(screen, (200, 200), 100, segment_values, colors)
 
-# Vertex shader code
-vertex_shader_code = """
-    attribute vec2 position;
-    void main() {
-        gl_Position = vec4(position, 0.0, 1.0);
-    }
-"""
-
-# Fragment shader code for darkness effect
-fragment_shader_code = """
-    uniform float darkness;
-    void main() {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, darkness);
-    }
-"""
-
-# Compile the shaders
-vertex_shader = compileShader(vertex_shader_code, GL_VERTEX_SHADER)
-fragment_shader = compileShader(fragment_shader_code, GL_FRAGMENT_SHADER)
-
-# Create a shader program
-shader_program = glCreateProgram()
-glAttachShader(shader_program, vertex_shader)
-glAttachShader(shader_program, fragment_shader)
-glLinkProgram(shader_program)
-glUseProgram(shader_program)
-
-# Set up a quad to cover the entire screen
-vertices = [-1, -1, 1, -1, -1, 1, 1, 1]
-vertices = (GLfloat * len(vertices))(*vertices)
-vbo = glGenBuffers(1)
-glBindBuffer(GL_ARRAY_BUFFER, vbo)
-glBufferData(GL_ARRAY_BUFFER, len(vertices) * 4, vertices, GL_STATIC_DRAW)
-
-position = glGetAttribLocation(shader_program, "position")
-glEnableVertexAttribArray(position)
-glVertexAttribPointer(position, 2, GL_FLOAT, GL_FALSE, 0, None)
-
-# Main loop
 running = True
-darkness = 0.0  # Adjust this value to control darkness (0.0 to 1.0)
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-    glUseProgram(shader_program)
-    glUniform1f(glGetUniformLocation(shader_program, "darkness"), darkness)
-
-    glClear(GL_COLOR_BUFFER_BIT)
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
     pygame.display.flip()
+    clock.tick(60)
 
-# Clean up
-glDeleteProgram(shader_program)
-glDeleteBuffers(1, [vbo])
 pygame.quit()

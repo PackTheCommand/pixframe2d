@@ -31,6 +31,7 @@ def get_files_in_folder(folder_path):
 import services.dialog_service
 class GameRenderLoop:
     def __init__(self, width, height):
+        self.pauseMenu = None
         self.in_dialog = False
         self.in_cutsene = False
         self.lights =[]
@@ -404,6 +405,9 @@ class GameRenderLoop:
         return event_id
     
     
+    def player_interact_runway_stop(self):
+        self.togleSchadows(False)
+
 
 
     def removeClickListener(self, event_id):

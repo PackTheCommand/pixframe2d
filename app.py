@@ -270,7 +270,7 @@ from audio import definebgMusic
 from scripting import scriptManager
 def startGame(path_uuid=None):
     global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation,level_store_uid_to_Elementid,levelOBJ,scriptsManagers
-
+    render_loop.pauseMenu=pase_to_engene_pause_func
     levelOBJ = Level(render_loop)
     render_loop.level=levelOBJ
     if path_uuid == None:
@@ -795,6 +795,7 @@ in_pause_menu=False
 escape_pressing=False
 
 def display_pause_menu():
+    render_loop.set_pause_ANY_CUTSENE_DIALOG(True)
 
     pause_titel = render_loop.addText("Game Paused", 40, 30, 80, (131, 201, 244), uses_map_offset=False)
     render_loop.addSchadowIgnore(pause_titel)
@@ -832,7 +833,14 @@ def display_pause_menu():
         render_loop.running = False
 
     quitb = Button(render_loop, 100, 320, width=200, height=50, text="Quit", click_function=quit, font_size=35)
-    return lambda p=play,q=quitb,lev=levsel,pt=pause_titel,:render_loop.removes([p,q,lev,pt])
+    def pause_end(e):
+        render_loop.removes(e)
+        render_loop.set_pause_ANY_CUTSENE_DIALOG(False)
+
+
+
+        return display_pause_menu
+    return lambda p=play,q=quitb,lev=levsel,pt=pause_titel,:pause_end([p,q,lev,pt])
 hide_display_pause_function=None
 
 
@@ -916,6 +924,15 @@ def check_interaction(px,py,pressedKeys):
             displayInteractPreview(None,None)
 
     pass
+
+
+def pase_to_engene_pause_func():
+    if in_pause_menu:
+        render_loop.set_pause_ANY_CUTSENE_DIALOG(True)
+        render_loop.pauseMenuFunc = display_pause_menu()
+    else:
+        render_loop.set_pause_ANY_CUTSENE_DIALOG(False)
+        render_loop.pauseMenuFunc=render_loop.pauseMenuFunc()
 
 
 def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
