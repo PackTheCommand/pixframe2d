@@ -1,5 +1,5 @@
 class Animation:
-    def __init__(self,images,frameTime,subAnimations:dict,masterImageid,shadow_imgs,sub_shadow_imgs):
+    def __init__(self,images,frameTime,subAnimations:dict,masterImageid,shadow_imgs,sub_shadow_imgs,render_loop):
         self.frametime = frameTime
         self.masterImageid = masterImageid
         self.images = images
@@ -8,6 +8,7 @@ class Animation:
         self.sub_shadow_imgs = sub_shadow_imgs
         self.len=len(images)
         self.counter = 0
+        self.renderloop=render_loop
         self.loop_sub=False
         self.sub_remain_loop_times=0
 
@@ -15,6 +16,7 @@ class Animation:
         self.subAnimations = subAnimations
         self.current_subAnimation =None
     def getImage(self):
+
         if self.current_subAnimation:
             return self.getSubAnimation()
         self.counter+=1
@@ -42,6 +44,7 @@ class Animation:
         return self.images[0].get_height()
 
     def loop(self,name,times=1):
+
         if self.curant_sub_animation_name==name:
             self.sub_remain_loop_times=times
             return

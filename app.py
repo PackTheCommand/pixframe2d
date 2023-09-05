@@ -407,7 +407,7 @@ def startGame(path_uuid=None):
                 bound_to=path_meta["data"]["bound_to"]
                 print(path_meta)
                 if len(path_data)>0:
-                    anima=movable_objects.PathFollowAnimation(path_data[0][0],1*path_meta["speed"],True)
+                    anima=movable_objects.PathFollowAnimation(path_data[0][0],1*path_meta["speed"],True,renderloop=render_loop)
                     print("addet animation")
                     movable_objects.addAnimatedObject(render_loop, level_store_uid_to_Elementid[bound_to], anima)
 
@@ -949,7 +949,7 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
 
     """if pygame.K_s in pressed_keys:
         y+=1"""
-    if (pygame.K_ESCAPE in triger_once):
+    """if (pygame.K_ESCAPE in triger_once):
 
         in_pause_menu= not in_pause_menu
 
@@ -958,7 +958,7 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
             hide_display_pause_function=display_pause_menu()
         else:
             render_loop.set_pause_ANY_CUTSENE_DIALOG(False)
-            hide_display_pause_function()
+            hide_display_pause_function()"""
 
 
 

@@ -23,7 +23,7 @@ import ui_code
 
 from interfaces.objectPropertiesMenu import ObjectPropertiesMenu
 
-folders = {"main": {"deco": {}, "blocks": {}, "actions": {}, }}
+folders = {"main": {"deco": {}, "blocks": {}, "actions": {},"materials":{} }}
 
 
 def addSubfolder(path: str, name: str):
@@ -160,6 +160,13 @@ class CanvasApp:
             {"name": " Light", "path": "imgs/light.png", "type": "light", "collision": False,
              "folder": "actions/"}
         ]
+
+       """ self.texture_data += [
+            {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file,"collection":{}, "type": "object", "collision": True,
+             "folder": "blocks/","material_unique":""}
+            for file in get_files_in_folder("imgs/blocks/")
+        ]"""
+
         self.texture_data += [
             {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file, "type": "object", "collision": True,
              "folder": "blocks/"}

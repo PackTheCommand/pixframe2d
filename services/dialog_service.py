@@ -72,11 +72,40 @@ def getloadingImg(surf:pygame.surface.Surface,procent):
 
 loading_progress=0
 
+
+def rounded_polygon(start, end, text, font, screen, outline_margin=2):
+    # Define colors
+    Forground = (255, 255, 255)
+    BackgroundC = (0, 0, 0, 128)
+
+    # Define points for polygon
+
+    # Draw polygon
+
+    pygame.draw.rect(screen, BackgroundC,
+                     pygame.rect.Rect(start[0], start[1], end[0] - start[0], end[1] - start[1]), border_radius=20)
+    om = outline_margin
+    pygame.draw.rect(screen, Forground,
+                     pygame.rect.Rect( start[0]+ om, start[1] + om, end[0] - start[0] - om * 2,
+                                      end[1] - start[1] - om * 2), 1,
+                     border_radius=20)
+
+    # Draw text
+    # pygame.draw.polygon(screen, BLACK, points2, outline_width)
+    text_surface = font.render(text, True, Forground)
+    print("width",text_surface.get_width())
+
+    pygame.draw.rect(screen, BackgroundC,(start[0]+10,start[1]-20,text_surface.get_width()+
+                                        15,text_surface.get_height()+10),border_radius=10,)
+
+    screen.blit(text_surface, (start[0] + 20, start[1]-10 ))
+
 class BackgoundModeFlags:
 
     STORY=0
     GAME=1
-
+line_ofset = 0
+max_row=0
 
 class DialogService:
     def draw_alpha_circle(self,screen, alpha_value, screen_width, screen_height):
@@ -96,7 +125,7 @@ class DialogService:
 
         if self.FLAG_BACKGROUND_MODE == BackgoundModeFlags.STORY:
 
-            pygame.draw.rect(circle_surface, (0, 0, 0, alpha_value), (0, 0, screen_width, screen_height))
+            pygame.draw.circle(circle_surface, (0, 0, 0, alpha_value),(screen_width//2,screen_height//2),(screen_width//2)*alpha_value)
             self.loading_screen_img.set_alpha(alpha_value)
 
             circle_surface.blit(self.loading_screen_img, (circle_x - 100, circle_y - 100))
@@ -111,6 +140,7 @@ class DialogService:
 
     curantService=None
     def __init__(self, renderloop):
+        self.text_popuop_efect_index =0
         global limgs
 
 
@@ -124,13 +154,19 @@ class DialogService:
         self.loading_screen_img=pygame.transform.scale(pygame.image.load("imgs/loading_icon.png"),(200,200))
         self.dialog_endet=False
         self.fade_in_or_out=fade.OUT
-        self.box=pygame.transform.scale(pygame.image.load("imgs/dialog_box.png"),(self.renderloop.screen_width,(self.renderloop.screen_height//4)))
+        """self.box=pygame.transform.scale(pygame.image.load("imgs/dialog_box.png"),(self.renderloop.screen_width,(self.renderloop.screen_height//4)))
+        """
         self.dialog_index = -1
         self.store= {"text":[], "img":None,"box":None,"text_source":None}
-        self.font=font = pygame.font.Font(None, 50)
-        self.source_font=pygame.font.Font(None, 60)
-    def while_dialog(self,key_inputs,screen:pygame.surface.Surface):
+        self.font=font = pygame.font.Font(None, 30)
+        self.source_font=pygame.font.Font(None, 40)
+
+
+    def while_dialog(self,key_inputs,screen:pygame.surface.Surface,mouse_input):
         global loading_progress
+        max_lines_on_screen=4
+        global line_ofset,max_row
+
 
         self.draw_alpha_circle(screen, self.fade_in, self.renderloop.screen_width, self.renderloop.screen_height)
         loading_progress +=1
@@ -204,6 +240,20 @@ class DialogService:
                     else:
                         self.ren_new_dialog_part(screen)
                         self.dialog_index += 1
+                        line_ofset=0
+                        max_row=0
+                        self.text_popuop_efect_index = 0
+
+                for e in mouse_input:
+                    if e.button == 4:
+
+                        if line_ofset>0:
+                            line_ofset-=1
+                    elif e.button == 5:
+                        if line_ofset<max_row:
+                            line_ofset += 1
+
+
             else:
 
                 self.renderloop.pause_gameplay_level_engene = False
@@ -215,12 +265,90 @@ class DialogService:
             if self.store["img"]!=None:
 
                 screen.blit(self.store["img"],(0,0))
-        screen.blit(self.box, (0, (self.renderloop.screen_height//4)*3-60))
-        if self.store["text"]!=[]:
-            for n,text in enumerate(self.store["text"]):
-                screen.blit(text, (self.renderloop.screen_width//6, (self.renderloop.screen_height//4)*3+50*n))
+
+        text_source = "Unknown"
         if self.store["text_source"]!=None:
-            screen.blit(self.store["text_source"], (self.renderloop.screen_width//6-40, (self.renderloop.screen_height//4)*3-50))
+            text_source=self.store["text_source"]
+        p1,p2=self.renderloop.screen_width//8, (self.renderloop.screen_height//4)*3-60
+
+        rounded_polygon((p1,p2),(p1*7,self.renderloop.screen_height-40),text_source,self.source_font,screen)
+
+
+
+
+
+
+
+
+
+
+
+        if self.store["text"]!=[]:
+            #line breaking
+            spaceofset = -1
+            max_width = self.renderloop.screen_width//12*7
+            wi = 0
+            last_space_a = 0
+            nl = []
+            for n, text in enumerate(self.store["text"]):
+
+                if text == "space":
+
+                    last_space_a = n
+
+                    wi+=10
+                    if wi >= max_width:
+                        nl.append( "break")
+
+                        wi = 0
+                        continue
+                    else:
+                        nl.append(text)
+                        continue
+
+                wi += text.get_width()
+                if wi > max_width:
+                    nl[last_space_a] =  "break"
+
+                    wi = 0
+
+
+                nl.append(text)
+
+            #text rendering
+            lastwidth=0
+
+            row=0
+            self.text_popuop_efect_index+=0.5
+            for n,text in enumerate(nl):
+                if n>self.text_popuop_efect_index:
+                    continue
+                print(row)
+
+                if text=="space":
+                    lastwidth+=10
+
+                    continue
+                elif text=="break":
+                    row+=1
+                    lastwidth=0
+                    continue
+
+                if line_ofset<=row<max_lines_on_screen-line_ofset:
+                    screen.blit(text, (self.renderloop.screen_width//6+lastwidth, (self.renderloop.screen_height//4)*3+50*(row-line_ofset)-10))
+
+
+                lastwidth+=text.get_width()
+            if row > max_row:
+                max_row += 1
+
+            if (row > max_row)&(row > line_ofset):
+                line_ofset += 1
+
+
+
+            #screen.blit(self.store["text_source"], (self.renderloop.screen_width//6-40, (self.renderloop.screen_height//4)*3-50))
+
 
 
 
@@ -228,23 +356,46 @@ class DialogService:
 
 
     def ren_new_dialog_part(self, screen=None, max_chars=40):
-        self.box = pygame.transform.scale(pygame.image.load("imgs/dialog_box.png"),
-                                          (self.renderloop.screen_width, (self.renderloop.screen_height // 4)))
+        """ self.box = pygame.transform.scale(pygame.image.load("imgs/dialog_box.png"),
+                                          (self.renderloop.screen_width, (self.renderloop.screen_height // 4)))"""
 
-        print("index",self.dialog_index)
+
         it=self.curdialog[self.dialog_index]
         if it.get("img")!=None:
             self.store["img"]=pygame.transform.scale(pygame.image.load(it["img"].replace("$levdir",self.renderloop.level.path[:-1])),(self.renderloop.screen_width,self.renderloop.screen_height))
         self.store["text"]=[]
         if it.get("text")!=None:
+            col = (255, 255, 255)
+            toglecol=""
+            for i in it["text"].split(" "):
+                if i.startswith("*"):
+                    i=i[1:]
+                    toglecol="imp"
+                    col=(245, 85, 54)
 
-            
-            for i in wrap(it["text"],max_chars):
-                self.store["text"].append(self.font.render(i,True,(255,255,255),))
+                if i.endswith("*"):
+
+                    i = i[:-1]
+
+
+
+
+
+
+                for e in i:
+
+
+                    self.store["text"].append(self.font.render(e,True,col,))
+                self.store["text"].append("space")
+
+                if i.endswith("*"):
+                    toglecol=""
+                    i=i[:-1]
+                    col=(255, 255, 255)
 
         if it.get("text_source")!=None:
-            f=self.source_font.render(it["text_source"],True,(255,255,255),)
-            self.store["text_source"]=f
+
+            self.store["text_source"]=it["text_source"]
 
 
 

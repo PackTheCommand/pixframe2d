@@ -7,6 +7,9 @@ import moviepy.editor as mp
 import pygame
 import sys
 
+from mygame.objects.visual_effects.screen_bubleing import screen_bubbeling
+from objects.visual_effects  import *
+
 from pygame import KEYDOWN, KEYUP, BLEND_RGBA_MULT
 
 from mygame.objects.animation import Animation
@@ -35,6 +38,7 @@ class GameRenderLoop:
         self.in_dialog = False
         self.in_cutsene = False
         self.lights =[]
+        self.screen_efects = []
         self.pause_gameplay_level_engene=False
         self.break_any_non_game_mode = False
         self.shadow_store = {}
@@ -280,7 +284,7 @@ class GameRenderLoop:
                 d[subani]["imgs"] +=[image]
                 sub_shadows[subani] +=[self.craete_manual_shadow_image(image)]
         element_id = self.genId()
-        animationObj=Animation(l,animation["delay"],d,element_id,shadow_images,sub_shadows)
+        animationObj=Animation(l,animation["delay"],d,element_id,shadow_images,sub_shadows,render_loop=self)
         self.animation_colections[element_id]=animationObj
         self.elements[element_id]=( animationObj, x, y,uses_map_offset)
         return element_id,animationObj
@@ -551,6 +555,8 @@ class GameRenderLoop:
     def getUsesMapOfset(self,id):
         if id in self.elements:
             return self.elements[id][3]
+
+
     def run(self,updateparmsFunc):
         self.running = True
         def scedue():
@@ -613,9 +619,11 @@ class GameRenderLoop:
                         event_function(event)
 
             #self.screen.fill((0, 0, 0))  # Fill the screen with black
-            if self.keypressfunction:
+            if bool(self.keypressfunction)&(not self.in_dialog):
                 self.keypressfunction(pressed_keys,mouseButtons_pressed,presse_triger_once)
 
+            if (pygame.K_ESCAPE in presse_triger_once)&bool(self.pauseMenu):
+                self.pauseMenu()
 
 
 
@@ -645,7 +653,9 @@ class GameRenderLoop:
                         else:
 
                             self.screen.blit(element, (x, y))
-
+            if self.flagXL_SCHADOW_FILTER:
+                shadow_map = self.createShadowMap()
+                self.screen.blit(shadow_map,(0,0),special_flags=BLEND_RGBA_MULT)
             if self.in_cutsene&(not self.break_any_non_game_mode):
                 frame = self.iter_Cutsene()
 
@@ -656,8 +666,10 @@ class GameRenderLoop:
                     self.in_cutsene = False
                     self.togleSchadows(True)
             elif (self.in_dialog)&(not self.break_any_non_game_mode):
-                self.dialog_service.while_dialog(presse_triger_once,self.screen)
+                self.dialog_service.while_dialog(presse_triger_once,self.screen,mouseButtons_pressed)
                 pass
+
+            """screen_bubbeling(self.screen)"""
 
 
             if self.debug_interface_function:
@@ -668,9 +680,7 @@ class GameRenderLoop:
                 else:
                     self.debug_interface_function(False)
 
-            if self.flagXL_SCHADOW_FILTER:
-                shadow_map = self.createShadowMap()
-                self.screen.blit(shadow_map,(0,0),special_flags=BLEND_RGBA_MULT)
+
             self.clock.tick(60)
 
 
