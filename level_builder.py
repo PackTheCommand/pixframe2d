@@ -161,7 +161,7 @@ class CanvasApp:
              "folder": "actions/"}
         ]
 
-       """ self.texture_data += [
+        """ self.texture_data += [
             {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file,"collection":{}, "type": "object", "collision": True,
              "folder": "blocks/","material_unique":""}
             for file in get_files_in_folder("imgs/blocks/")
