@@ -1,15 +1,79 @@
+import json
+
+from PIL import Image
+
+
 class Material:
-    def __init__(self, map):
+    def __init__(self, info=None,file=None):
+        if file:
+            with  open(file, "r") as f:
+                info = json.load(f)
+        map=self.split_texture(info["map"])
+
+
         self.map = map
-        self.top = map["n"]
-        self.bottom = map["s"]
-        self.left = map["w"]
-        self.right = map["e"]
+        self.n = map["n"]
+        self.s = map["s"]
+        self.w = map["w"]
+        self.e = map["e"]
         self.nw = map["nw"]
         self.ne = map["ne"]
         self.sw = map["sw"]
-        self.uniquename = map["uniqueName"]
+        self.uniquename = info["uniqueName"]
         self.se = map["se"]
+
+    from PIL import Image
+
+    def split_texture(self,filename):
+        # Load the PNG image
+        image = Image.open(filename)
+
+        # Get the dimensions of the image
+        width, height = image.size
+
+        # Ensure the image is at least 3x3 pixels in size
+        if width < 3 or height < 3:
+            raise ValueError("Image dimensions must be at least 3x3 pixels")
+
+        # Define the 3x3 grid coordinates
+        grid_coordinates = [
+            ((0, 0), (width // 3, height // 3)),  # NW
+            ((width // 3, 0), (2 * (width // 3), height // 3)),  # N
+            ((2 * (width // 3), 0), (width, height // 3)),  # NE
+            ((0, height // 3), (width // 3, 2 * (height // 3))),  # W
+            ((width // 3, height // 3), (2 * (width // 3), 2 * (height // 3))),  # Center
+            ((2 * (width // 3), height // 3), (width, 2 * (height // 3))),  # E
+            ((0, 2 * (height // 3)), (width // 3, height)),  # SW
+            ((width // 3, 2 * (height // 3)), (2 * (width // 3), height)),  # S
+            ((2 * (width // 3), 2 * (height // 3)), (width, height))  # SE
+        ]
+
+        # Create a dictionary to store the subtextures
+        subtextures = {}
+
+        # Iterate through the grid coordinates and extract the subtextures
+        for direction, (start, end) in zip(['nw', 'n', 'ne', 'w', 'center', 'e', 'sw', 's', 'se'], grid_coordinates):
+            subtexture = image.crop((*start, *end))
+            subtextures[direction] = subtexture
+
+        return subtextures
 
     def getUNIQE(self):
         return self.uniquename
+
+
+    def to_json(self):
+        return {
+            "uniqueName":self.uniquename,
+            "collection":{
+                "se":self.se,
+                "sw":self.sw,
+                "nw":self.nw,
+                "ne":self.ne,
+                "n":self.n,
+                "w":self.w,
+                "e":self.e,
+                "s":self.s,
+
+            }
+        }

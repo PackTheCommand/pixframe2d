@@ -9,8 +9,10 @@ import tkinter.font as tkfont
 from PIL import Image, ImageTk
 from PIL import ImageDraw
 
-from mygame.interfaces.editWindow import EditWindow
+from interfaces.editWindow import EditWindow
 import interfaces.script_overview_menu as script_overview_menu
+from objects.editFile import EditFile
+from objects.material import Material
 
 G_WIDTH = 800
 G_HEIGHT = 600
@@ -23,7 +25,7 @@ import ui_code
 
 from interfaces.objectPropertiesMenu import ObjectPropertiesMenu
 
-folders = {"main": {"deco": {}, "blocks": {}, "actions": {},"materials":{} }}
+folders = {"main": {"deco": {}, "blocks": {}, "actions": {}, "materials": {}}}
 
 
 def addSubfolder(path: str, name: str):
@@ -48,7 +50,7 @@ class CanvasApp:
 
         self.tempANY_store = None
         self.preview_point = None
-        self.loaded_from_file=False
+        self.loaded_from_file = False
 
         # sv_ttk.set_theme("dark")
 
@@ -82,7 +84,7 @@ class CanvasApp:
 
         self.uids = set()
         # path data
-
+        self.currant_editFile=EditFile()
         self.object_pathstore = []
         self.path_labels = []  # Store path label data (names)
         self.path_metadata = {}
@@ -161,11 +163,33 @@ class CanvasApp:
              "folder": "actions/"}
         ]
 
-        """ self.texture_data += [
+        def getMaterialsInFolder(folder_path):
+            files = []
+
+            try:
+                # Get a list of all items in the folder
+                items = os.listdir(folder_path)
+
+                # Filter out only the files (not directories)
+                files = [item for item in items if os.path.isfile(os.path.join(folder_path, item))]
+
+            except OSError as e:
+                print("Error:", e)
+
+            for file in files:
+                if file.endswith(".mat"):
+                    self.currant_editFile.addMaterial(file)
+
+
+
+
+
+
+        self.texture_data += [
             {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file,"collection":{}, "type": "object", "collision": True,
              "folder": "blocks/","material_unique":""}
             for file in get_files_in_folder("imgs/blocks/")
-        ]"""
+        ]
 
         self.texture_data += [
             {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file, "type": "object", "collision": True,
@@ -307,7 +331,7 @@ class CanvasApp:
                                               relief="flat", bg='#87D68D', fg='white')
         self.send_to_front_button.pack(side=tk.LEFT)
 
-        self.scriptWIN = script_overview_menu.UIWindow(scripts_frame,self)
+        self.scriptWIN = script_overview_menu.UIWindow(scripts_frame, self)
 
         checked_state = tk.BooleanVar()
         checked_state.set(True)
@@ -382,6 +406,20 @@ class CanvasApp:
         """self.toggle_visibility_button =ttk.Button(tap_paths, text="Toggle Visibility",
                                                   command=self.toggle_object_path_visibility)
         self.toggle_visibility_button.pack()"""
+
+    def addCuraantSelected(self, id, x, y):
+        return {
+            "id": id,
+            "material": self.curant_object_data["materialID"] if "collection" in self.curant_object_data else None,
+            "type": self.curant_object_data["type"],
+            "texture": self.curant_object_data["path"] if not "collection" in self.curant_object_data else None,
+            "x": x - self.ofset_x, "y": y - self.ofset_y,
+            "collision": self.curant_object_data["collision"],
+            "width": BLOCK_SIZE, "height": BLOCK_SIZE,
+            "nbt": {},
+            "o-layer": self.object_orinetation_level,
+            "uuid": self.gen_uuid()
+        }
 
     def but_path_bind_mode(self):
         if self.select_object_path_bind_mode == 0:
@@ -701,6 +739,7 @@ class CanvasApp:
                     print(texture["type"])
 
                     self.curant_object_data = texture
+
                     self.current_texture = texture["path"]
 
                 image = createImage(texture["path"], 25, 25, name=texture["path"].split("/")[-1])
@@ -773,7 +812,7 @@ class CanvasApp:
             self.path_metadata = []
             self.create_cordnateSystem()
 
-            with open(ask+"/level.levdat") as f:
+            with open(ask + "/level.levdat") as f:
                 level_json = json.load(f)
             """
             Note Save mode doesnt check all properties of the json file
@@ -999,7 +1038,7 @@ class CanvasApp:
                 print("diference", (self.ofset_x + ox))
 
                 self.canvas.create_line((pa + (self.ofset_x + ox), pb + (self.ofset_y + oy)), (
-                self.current_path[-1][0] + self.ofset_x, self.current_path[-1][1] + self.ofset_y), fill="blue",
+                    self.current_path[-1][0] + self.ofset_x, self.current_path[-1][1] + self.ofset_y), fill="blue",
                                         tags=["paths", "temp_paths", "#movable"])
             self.last_ofset = (-self.ofset_x, -self.ofset_y)
             self.last_point = (x, y)
@@ -1014,22 +1053,12 @@ class CanvasApp:
             # print(snapped_x+grid_offset_x)
             print(snapped_x, x)
 
-            image = createImage(self.current_texture, 50, 50, name=self.current_texture.split("/")[-1])
+            image = createImage(self.current_texture, 50, 50, name=self.curant_object_data["path"].split("/")[-1])
             image_width, image_height = image.width(), image.height()
             # new_image = image.subsample(2)  # Half the size
             # self.images += [new_image]
             element = self.canvas.create_image(snapped_x, snapped_y, image=image, tags=["#movable"], anchor="nw")
-            self.elements.append({
-                "id": element,
-                "type": self.current_obj_type,
-                "texture": self.current_texture,
-                "x": snapped_x - self.ofset_x, "y": snapped_y - self.ofset_y,
-                "collision": self.curant_object_data["collision"],
-                "width": BLOCK_SIZE, "height": BLOCK_SIZE,
-                "nbt": {},
-                "o-layer": self.object_orinetation_level,
-                "uuid": self.gen_uuid()
-            })
+            self.elements.append(self.addCuraantSelected(element, snapped_x, snapped_y))
             self.canvas.tag_raise("coordinate_labels")
 
     def add_temp_side_tab(self) -> ttk.Frame:
@@ -1050,8 +1079,8 @@ class CanvasApp:
 
         def open_context_menu(event):
             context_menu = tk.Menu(root, tearoff=0)
-            context_menu.add_command(label="Edit Interaction", command=lambda i=selected_element[0]:action_1(i))
-            context_menu.add_command(label="Edit plain NBT", command=lambda i=selected_element[0]:action_2(i))
+            context_menu.add_command(label="Edit Interaction", command=lambda i=selected_element[0]: action_1(i))
+            context_menu.add_command(label="Edit plain NBT", command=lambda i=selected_element[0]: action_2(i))
             context_menu.add_separator()
             context_menu.add_command(label="ER_MISSING", command=action_3)
 
@@ -1059,7 +1088,7 @@ class CanvasApp:
 
         def action_1(id):
 
-            def on_done(tab,id, dict, Save):
+            def on_done(tab, id, dict, Save):
                 self.editor_tabs_book.forget(tab)
                 if Save:
                     object_ = [o for o in self.elements if id == id]
@@ -1077,11 +1106,11 @@ class CanvasApp:
             if not "interact" in nbt:
                 action = {"sptype": "None", "trigger": "None", "function": ""}
             else:
-                action=nbt["interact"].copy()
+                action = nbt["interact"].copy()
             f = self.add_temp_side_tab()
 
             m = ObjectPropertiesMenu(f, action,
-                                     lambda nbt, save,tab=f, i=selected_element[0]: on_done(tab,i, nbt.copy(), save))
+                                     lambda nbt, save, tab=f, i=selected_element[0]: on_done(tab, i, nbt.copy(), save))
 
             print("Action 1 selected")
 
@@ -1089,7 +1118,7 @@ class CanvasApp:
             import interfaces.nbt_directEdit
             obj = [o for o in self.elements if o["id"] == id][0]
             if "nbt" in obj:
-                nbt_win=interfaces.nbt_directEdit.nbt_directEdit(obj, )
+                nbt_win = interfaces.nbt_directEdit.nbt_directEdit(obj, )
 
         def action_3():
             print("Action 3 sele")
@@ -1129,13 +1158,10 @@ class CanvasApp:
 
         print("Saved elements:")
 
-
-
-
         if ((not self.save_path) | force):
 
             sf = ask_dir_dialog()
-            os.mkdir(sf+"/resources")
+            os.mkdir(sf + "/resources")
             os.mkdir(sf + "/scripts")
 
         else:
@@ -1146,8 +1172,8 @@ class CanvasApp:
         self.root.title("Editing - " + sf.split("/")[-1])
 
         pp = self.object_pathstore
-        self.loaded_from_file=True
-        with open(sf+"/level.levdat", "w") as f:
+        self.loaded_from_file = True
+        with open(sf + "/level.levdat", "w") as f:
             if self.bg_image:
                 json.dump(
                     {"elements": [{"type": "bg_image", "texture": self.bg_image_path}] + self.elements, "paths": pp,
@@ -1225,16 +1251,8 @@ class CanvasApp:
 
                         element = self.canvas.create_image(snapped_x, snapped_y, image=image, tags=["#movable"],
                                                            anchor="nw")
-                        self.elements.append({
-                            "id": element,
-                            "type": self.current_obj_type,
-                            "texture": self.current_texture,
-                            "x": snapped_x - self.ofset_x, "y": snapped_y - self.ofset_y,
-                            "collision": self.curant_object_data["collision"],
-                            "width": image_width, "height": image_height,
-                            "tags": [],
-                            "uuid": self.gen_uuid()
-                        })
+                        self.elements.append(self.addCuraantSelected(element, snapped_x, snapped_y)
+                                             )
             self.canvas.tag_raise("coordinate_labels")  # , "coordinate_labels")
 
 
