@@ -1,0 +1,39 @@
+    def getI(x,y):
+        if len(texture_grid)>x:
+
+
+
+            if len(texture_grid) > x:
+                t = texture_grid[x]
+                if len(y)>t:
+                    return bool(t[y])
+
+        return False
+
+
+
+    def get_direction(x, y):
+        if not getI(x,y):
+            return "empty"
+        l={"n":getI(x-1,y)&(not getI(x,y+1))&getI(x,y-1),
+           "s":getI(x-1,y)&(not getI(x,y-1))&getI(x,y-1)&getI(x,y+1),
+
+           "w":getI(x,y-1)&(not getI(x-1,y))&getI(x+1,y),
+           "e":getI(x,y-1)&(not getI(x+1,y))&getI(x-1,y),
+
+           "nw":getI(x-1,y)&(not getI(x,y+1))&getI(x,y-1),
+           "ne":getI(x-1,y)&(not getI(x,y-1))&getI(x,y+1),
+           "sw":getI(x-1,y)&(not getI(x,y-1))&getI(x,y+1),
+           "se":getI(x-1,y)&(not getI(x,y+1))&getI(x,y-1),
+
+           "center":getI(x-1,y)&(not getI(x,y+1))&getI(x,y-1)&getI(x,y+1)&getI(x-1,y)&getI(x+1,y),
+
+
+
+
+
+           }
+        for key in l:
+            if l[key]:
+                return key
+        return "base"
