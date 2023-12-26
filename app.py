@@ -1,8 +1,8 @@
 import json
 import threading
 
-import mygame.scripting.objects.objectCol
-from mygame.scripting.objects.level import Level
+import scripting.objects.objectCol
+from scripting.objects.level import Level
 from audio import sound
 
 

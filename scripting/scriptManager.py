@@ -2,9 +2,9 @@ import importlib.util
 
 import lupa
 
-import mygame.scripting.objects.objectCol
-import mygame.scripting.objects.player
-from mygame.scripting.objects.api import API
+import scripting.objects.objectCol
+import scripting.objects.player
+from scripting.objects.api import API
 
 
 class pyManager:

@@ -7,12 +7,12 @@ import moviepy.editor as mp
 import pygame
 import sys
 
-from mygame.objects.visual_effects.screen_bubleing import screen_bubbeling
+from objects.visual_effects.screen_bubleing import screen_bubbeling
 from objects.visual_effects  import *
 
 from pygame import KEYDOWN, KEYUP, BLEND_RGBA_MULT
 
-from mygame.objects.animation import Animation
+from objects.animation import Animation
 
 import json
 

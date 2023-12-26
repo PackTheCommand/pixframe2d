@@ -2,7 +2,7 @@
 from .player import Player
 from .objectCol import Objects
 from .level import Level
-from ...services.dialog_service import DialogService
+from services.dialog_service import DialogService
 
 class API:
     def __init__(self,renderloop):

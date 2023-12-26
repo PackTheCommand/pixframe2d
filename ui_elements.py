@@ -1,6 +1,6 @@
 import pygame
 
-from mygame.engene import GameRenderLoop
+from engene import GameRenderLoop
 
 
 class Checkbox:
