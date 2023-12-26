@@ -778,6 +778,7 @@ class CanvasApp:
                    is_material=True
 
                 else:
+
                     image = createImage(texture["path"], 25, 25, name=texture["path"].split("/")[-1])
                 image_label = tk.Label(texture_frame, image=image, bg='#333440')
 
