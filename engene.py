@@ -30,10 +30,14 @@ def get_files_in_folder(folder_path):
         print("Error:", e)
 
     return files
+class ViewPoints:
+    topdown=0
+    sideview=1
+
 
 import services.dialog_service
 class GameRenderLoop:
-    def __init__(self, width, height):
+    def __init__(self, width, height,viewpoint=ViewPoints.sideview):
         self.pauseMenu = None
         self.in_dialog = False
         self.in_cutsene = False
@@ -46,6 +50,7 @@ class GameRenderLoop:
         self.no_schadow_elements = []
         self.display_debug = False
         self.render_overwrite=None
+        self.viewpoint=viewpoint
         self.level=None
 
 

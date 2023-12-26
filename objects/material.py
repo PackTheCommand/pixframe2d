@@ -1,17 +1,21 @@
 import json
 
-from PIL import Image
+from PIL import Image, ImageTk
 
+list=[]
+preview_show = Image.open("imgs/img-tools/material_overlay.png").resize((25,25),Image.NEAREST)
+list.append(preview_show)
 
 class Material:
-    def __init__(self, info=None,file=None):
+    def __init__(self, info=None,file=None,path=None):
         if file:
-            with  open(file, "r") as f:
+            with  open(path+file, "r") as f:
                 info = json.load(f)
-        map=self.split_texture(info["map"])
+        map=self.split_texture(path+info["map"])
 
-
+        self.info = info
         self.map = map
+        self.category = info["category"]
         self.n = map["n"]
         self.s = map["s"]
         self.w = map["w"]
@@ -21,8 +25,22 @@ class Material:
         self.sw = map["sw"]
         self.uniquename = info["uniqueName"]
         self.se = map["se"]
+        self.preview=None
 
     from PIL import Image
+
+    def gPreview(self,x,y):
+        return self.generatePreview(x,y)
+    def generatePreview(self,x,y):
+        if self.preview:
+            return self.preview
+
+        prev = self.map[self.info["preview"]].convert("RGBA")
+        print(prev,preview_show.convert("RGBA"))
+
+        i=Image.alpha_composite(prev.resize((x,y),Image.NEAREST), preview_show)
+        self.preview=ImageTk.PhotoImage(i)
+        return self.preview
 
     def split_texture(self,filename):
         # Load the PNG image

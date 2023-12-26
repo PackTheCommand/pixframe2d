@@ -1,6 +1,8 @@
 {"name": "Asset",
-         "preview":null,
+         "preview":"nw",
         "map": "ground.png",
+
+        "category": "materials/",
 
   "uniqueName": "happytimes_ground"
         }

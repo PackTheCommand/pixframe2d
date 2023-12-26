@@ -13,7 +13,7 @@ with open("leveldata/levels.json") as f:
 
 import pygame
 
-from engene import GameRenderLoop, SCHADOW_STATE
+from engene import GameRenderLoop, SCHADOW_STATE,ViewPoints
 from ui_elements import Button
 
 import movable_objects
@@ -412,7 +412,7 @@ def startGame(path_uuid=None):
                     movable_objects.addAnimatedObject(render_loop, level_store_uid_to_Elementid[bound_to], anima)
 
     for script in scriptsManagers:
-        mygame.scripting.objects.objectCol.Objects.uuid_to_id=level_store_uid_to_Elementid
+        scripting.objects.objectCol.Objects.uuid_to_id=level_store_uid_to_Elementid
         #script.setLEVconstants(level_store_uid_to_Elementid,level_store)
         scriptsManagers[script].start(levelOBJ)
 
@@ -987,8 +987,12 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
                     jumping = True
                     playsound(sound.jump_sound)
         pushUp()
-        gravity()
-        jump_s()
+
+
+        if render_loop.viewpoint==ViewPoints.topdown:
+
+            gravity()
+            jump_s()
         BOUNCE_AREA_X = SCREEN_WIDTH // 2.4
         BAUCE_AREA_Y = SCREEN_HEIGHT // 3
 

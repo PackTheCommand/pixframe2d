@@ -7,15 +7,13 @@ class EditFile:
         self.Materials=[]
 
 
-    def addMaterial(self,material):
-        if type(material)==Material:
-            self.Materials.append(material)
-        elif type(material)==dict:
-            m=Material(material)
+    def addMaterial(self,path,material_file):
+
+        if type(material_file)==str:
+            m=Material(file=material_file,path=path)
             self.Materials.append(m)
-        elif type(material)==str:
-            m=Material(file=material)
-            self.Materials.append(m)
+            print("added material",m.getUNIQE())
+            return m
 
         else:
             print("Error: Material is not of type Material")

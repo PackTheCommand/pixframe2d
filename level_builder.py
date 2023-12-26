@@ -9,6 +9,9 @@ import tkinter.font as tkfont
 from PIL import Image, ImageTk
 from PIL import ImageDraw
 
+
+PATH_MATERIAL_PLACEHOLDER="$is_image"
+
 from interfaces.editWindow import EditWindow
 import interfaces.script_overview_menu as script_overview_menu
 from objects.editFile import EditFile
@@ -135,6 +138,7 @@ class CanvasApp:
         self.rubber_button = tk.Button(toolFrame, text="🧽", command=self.toggle_rubber_mode, bg='#444654',
                                        font=tkfont.Font(size=12, weight="bold"), relief="flat", fg='white')
         self.rubber_button.pack(side=tk.TOP, anchor="n")
+        self.selected_is_Material=False
 
         root.bind("<Escape>", self.stop_fill)
 
@@ -146,6 +150,7 @@ class CanvasApp:
         self.root.bind("<r>", lambda e: self.toggle_rubber_mode())
 
         self.root.bind("<q>", lambda e: self.toggle_path_craete_mode())
+
 
         #
 
@@ -164,6 +169,7 @@ class CanvasApp:
         ]
 
         def getMaterialsInFolder(folder_path):
+            folder_path="imgs/"+folder_path
             files = []
 
             try:
@@ -178,7 +184,16 @@ class CanvasApp:
 
             for file in files:
                 if file.endswith(".mat"):
-                    self.currant_editFile.addMaterial(file)
+                    m:Material=self.currant_editFile.addMaterial(folder_path+"/",file)
+                    self.texture_data+=[
+
+                        {"name": "♨ " + file.split(".", 1)[0], "path": "$is_image", "collection": {},
+                         "type": "object", "collision": True,"mat_obj":m,
+                         "folder": m.category, "material_unique": m.getUNIQE()}
+
+                    ]
+
+
 
 
 
@@ -205,6 +220,9 @@ class CanvasApp:
                      "type": "object",
                      "collision": True, "folder": "blocks/" + folder + "/"}
                 ]
+        getMaterialsInFolder("materials/")
+
+
 
         self.texture_data += [
             {"name": "✿ " + file.split(".", 1)[0], "path": "imgs/decoration/" + file, "type": "object",
@@ -408,9 +426,11 @@ class CanvasApp:
         self.toggle_visibility_button.pack()"""
 
     def addCuraantSelected(self, id, x, y):
+        print(self.curant_object_data)
         return {
             "id": id,
-            "material": self.curant_object_data["materialID"] if "collection" in self.curant_object_data else None,
+            #"material": self.curant_object_data["materialID"] if "collection" in self.curant_object_data else None,
+            "material": self.curant_object_data["materialID"] if self.curant_object_data["collection"]!={} else None,
             "type": self.curant_object_data["type"],
             "texture": self.curant_object_data["path"] if not "collection" in self.curant_object_data else None,
             "x": x - self.ofset_x, "y": y - self.ofset_y,
@@ -710,7 +730,14 @@ class CanvasApp:
 
             self.elements_path_area_label.configure(text=path_str)
             for index, texture in enumerate(self.texture_data):
-                if not texture["path"].endswith(".png"): continue
+
+
+
+
+
+                if not texture["path"].endswith(".png"):
+                    if texture["path"] != PATH_MATERIAL_PLACEHOLDER:
+                        continue
 
                 print(texture)
                 if texture["folder"] != path_str:
@@ -723,10 +750,14 @@ class CanvasApp:
                 texture_frame = tk.Frame(self.texture_buttons_frame, bg='#333440')
                 texture_frame.grid(row=row, column=col, padx=5, pady=5)
 
-                def selectItem(texture_frame, texture, namelabel):
+                def selectItem(texture_frame, texture, namelabel,is_material=False):
                     texture = self.texture_data[texture]
                     nonlocal last_texture
                     if self.curant_object_data == texture: return
+
+
+                    self.selected_is_Material=is_material
+
 
                     if last_texture:
                         last_texture[0].configure(bg="#333440")
@@ -734,15 +765,20 @@ class CanvasApp:
                     texture_frame.configure(bg="green")
                     namelabel.configure(bg="green")
                     last_texture = (texture_frame, namelabel)
-                    print(texture)
+                    #print(texture)
                     self.current_obj_type = texture["type"]
-                    print(texture["type"])
+                    #print(texture["type"])
 
                     self.curant_object_data = texture
 
                     self.current_texture = texture["path"]
+                is_material=False
+                if texture["path"] == PATH_MATERIAL_PLACEHOLDER:
+                   image=texture["mat_obj"].gPreview(25,25)
+                   is_material=True
 
-                image = createImage(texture["path"], 25, 25, name=texture["path"].split("/")[-1])
+                else:
+                    image = createImage(texture["path"], 25, 25, name=texture["path"].split("/")[-1])
                 image_label = tk.Label(texture_frame, image=image, bg='#333440')
 
                 image_label.image = image
@@ -754,12 +790,12 @@ class CanvasApp:
 
                 name_label = tk.Label(texture_frame, text=pr, bg='#333440', fg='white', width=12, anchor="w")
                 name_label.bind("<Button-1>",
-                                lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+                                lambda e, te=texture_frame, tex=index, nl=name_label,ism=is_material: selectItem(te, tex, nl,ism))
 
                 image_label.bind("<Button-1>",
-                                 lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+                                 lambda e, te=texture_frame, tex=index, nl=name_label,ism=is_material: selectItem(te, tex, nl,ism))
                 texture_frame.bind("<Button-1>",
-                                   lambda e, te=texture_frame, tex=index, nl=name_label: selectItem(te, tex, nl))
+                                   lambda e, te=texture_frame, tex=index, nl=name_label,ism=is_material: selectItem(te, tex, nl,ism))
 
                 name_label.pack()
                 element_jard += [name_label, image_label, texture_frame]
