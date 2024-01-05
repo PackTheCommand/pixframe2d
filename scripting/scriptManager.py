@@ -63,8 +63,8 @@ class lua_Importer:
         api = API(render_loop)
         self.api = api
         api.stopSound=importantArtibutes["stop_sound"]
-        api.Player = mygame.scripting.objects.player.Player(render_loop, playerId)
-        api.Objects = mygame.scripting.objects.objectCol.Objects(render_loop, )
+        api.Player = scripting.objects.player.Player(render_loop, playerId)
+        api.Objects = scripting.objects.objectCol.Objects(render_loop, )
         api.VERSION = "S1.B.0"
 
         pass

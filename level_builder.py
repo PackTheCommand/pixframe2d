@@ -40,10 +40,16 @@ def addSubfolder(path: str, name: str):
 
     print(cr)
 
+
+
     cr[name] = {}
 
 
 """import sv_ttk"""  # to slow
+
+
+def getMaterialSide(param, snapped_x, snapped_y):
+    pass
 
 
 class CanvasApp:
@@ -187,7 +193,7 @@ class CanvasApp:
                     m:Material=self.currant_editFile.addMaterial(folder_path+"/",file)
                     self.texture_data+=[
 
-                        {"name": "♨ " + file.split(".", 1)[0], "path": "$is_image", "collection": {},
+                        {"name": "♨ " + file.split(".", 1)[0], "path": "$is_image",
                          "type": "object", "collision": True,"mat_obj":m,
                          "folder": m.category, "material_unique": m.getUNIQE()}
 
@@ -201,7 +207,7 @@ class CanvasApp:
 
 
         self.texture_data += [
-            {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file,"collection":{}, "type": "object", "collision": True,
+            {"name": "🖼 " + file.split(".", 1)[0], "path": "imgs/blocks/" + file, "type": "object", "collision": True,
              "folder": "blocks/","material_unique":""}
             for file in get_files_in_folder("imgs/blocks/")
         ]
@@ -430,7 +436,7 @@ class CanvasApp:
         return {
             "id": id,
             #"material": self.curant_object_data["materialID"] if "collection" in self.curant_object_data else None,
-            "material": self.curant_object_data["materialID"] if self.curant_object_data["collection"]!={} else None,
+            "material": self.curant_object_data["materialID"] if "collection" in self.curant_object_data  else None,
             "type": self.curant_object_data["type"],
             "texture": self.curant_object_data["path"] if not "collection" in self.curant_object_data else None,
             "x": x - self.ofset_x, "y": y - self.ofset_y,
@@ -770,15 +776,16 @@ class CanvasApp:
                     #print(texture["type"])
 
                     self.curant_object_data = texture
-
-                    self.current_texture = texture["path"]
+                    if is_material:
+                        self.curant_material_data = texture["mat_obj"]
+                    else:
+                        self.current_texture = texture["path"]
                 is_material=False
                 if texture["path"] == PATH_MATERIAL_PLACEHOLDER:
                    image=texture["mat_obj"].gPreview(25,25)
                    is_material=True
 
                 else:
-
                     image = createImage(texture["path"], 25, 25, name=texture["path"].split("/")[-1])
                 image_label = tk.Label(texture_frame, image=image, bg='#333440')
 
@@ -929,6 +936,9 @@ class CanvasApp:
         self.rubber_area_id = self.canvas.create_oval(0, 0, 0, 0, outline="red", tags="rubber_area")
         self.canvas.bind("<B1-Motion>", self.erase_elements)
 
+
+    def check_if_eareased_ellement_in_material_list(self,elemmen_Id):
+        self.currant_editFile.removeItem(elemmen_Id)
     def erase_elements(self, event):
         if self.rubber_mode:
             x1, y1 = event.x - 10, event.y - 10
@@ -938,6 +948,8 @@ class CanvasApp:
                 if element_id in self.protected_elements:
                     continue
                 self.canvas.delete(element_id)
+                self.check_if_eareased_ellement_in_material_list(element_id)
+
                 self.elements = [element for element in self.elements if element["id"] != element_id]
 
                 # unbinds paths if there
@@ -1088,15 +1100,23 @@ class CanvasApp:
             snapped_y = round((y - 25 - self.ofset_y) / self.grid_size) * self.grid_size + self.ofset_y
 
             # print(snapped_x+grid_offset_x)
-            print(snapped_x, x)
+            print("act:",snapped_x, x)
+            if self.selected_is_Material:
+                image=self.getMaterialSide(self.curant_object_data["mat_obj"],snapped_x,snapped_y)
 
-            image = createImage(self.current_texture, 50, 50, name=self.curant_object_data["path"].split("/")[-1])
-            image_width, image_height = image.width(), image.height()
+            else:
+                image = createImage(self.current_texture, 50, 50, name=self.curant_object_data["path"].split("/")[-1])
+            #image_width, image_height = image.width(), image.height()
             # new_image = image.subsample(2)  # Half the size
             # self.images += [new_image]
+
             element = self.canvas.create_image(snapped_x, snapped_y, image=image, tags=["#movable"], anchor="nw")
+            if self.selected_is_Material:
+                self.currant_editFile.addItem(snapped_x,snapped_y,element,self.curant_object_data["mat_obj"])
             self.elements.append(self.addCuraantSelected(element, snapped_x, snapped_y))
             self.canvas.tag_raise("coordinate_labels")
+        else:
+            print("nothing selected")
 
     def add_temp_side_tab(self) -> ttk.Frame:
         f = ttk.Frame(self.editor_tabs_book)
@@ -1291,6 +1311,37 @@ class CanvasApp:
                         self.elements.append(self.addCuraantSelected(element, snapped_x, snapped_y)
                                              )
             self.canvas.tag_raise("coordinate_labels")  # , "coordinate_labels")
+
+    def getMaterialSide(self, m_obj:Material, sx, sy):
+        gz=self.grid_size
+
+        def gc(x,y):
+            """Searches for a material at the referenced cordinate"""
+            return self.currant_editFile.getMaterilaAtXY(m_obj,x,y,)
+            #print(x,y,self.currant_editFile.material_snapp_map)
+        dire_str=""
+        n, e, s, w = gc(sx,sy-gz), gc(gz+sx,sy), gc(sx,gz+sy), gc(sx-gz,sy)
+        nw,ne,sw,se= gc(sx-gz,sy-gz),gc(gz+sx,sy-gz),gc(sx-gz,gz+sy),gc(gz+sx,gz+sy)
+
+
+
+        directional_redirect={"W":"ne","E":"nw","N":"s","S":"n","NSEW":"ce",
+         "NW":"se","NE":"sw","SW":"ne","SE":"nw","NSE":"w","NSW":"e","SEW":"n","NEW":"s",
+
+
+                              }
+
+        if n:dire_str+="N"
+        if s:dire_str+="S"
+        if e:dire_str+="E"
+        if w:dire_str+="W"
+        print("side:",directional_redirect.get(dire_str, "Error"),(n,e,s,w))
+
+        return m_obj.getTexture(directional_redirect.get(dire_str, "ce"))
+
+
+
+
 
 
 class fake_event():

@@ -49,6 +49,10 @@ class GameRenderLoop:
         self.shadow_textures = {}
         self.no_schadow_elements = []
         self.display_debug = False
+        def emptyPauseFunction():
+            print("EmptyFunction")
+            return emptyPauseFunction
+        self.pauseMenuFunc= emptyPauseFunction
         self.render_overwrite=None
         self.viewpoint=viewpoint
         self.level=None
@@ -368,7 +372,9 @@ class GameRenderLoop:
 
     def addTorch(self,x,y,width,flickering_light=True):
         self.lights+=[(x,y,width,flickering_light)]
-
+    def clearLightning(self):
+        self.lights=[]
+        self.shadow_textures={}
 
     def addImageFixedWidth(self, path, x, y, width,height,uses_map_offset=True):
         

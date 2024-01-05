@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 
 import scripting.objects.objectCol
 from scripting.objects.level import Level
@@ -24,18 +25,8 @@ def title_screen(render_loop):
         nonlocal render_loop
         render_loop.clearMenu()
 
-    def save_and_close():
-        # Implement your save logic here
-        pass
 
-    def check_button_click():
-        pass
-        """print("Check button clicked")
-        print("Checkbox 1:", checkbox1.is_checked())
-        print("Checkbox 2:", checkbox2.is_checked())
-        print("Input Text:", input_text.get_text())"""
 
-    # checkbox1 = Checkbox(render_loop, 100, 200, width=20, height=20, label="Option 1")
     def play():
         # print("klicked")
         render_loop.hides([play, load, quit, title,creadits])
@@ -270,6 +261,8 @@ from audio import definebgMusic
 from scripting import scriptManager
 def startGame(path_uuid=None):
     global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation,level_store_uid_to_Elementid,levelOBJ,scriptsManagers
+    print("Game Started")
+
     render_loop.pauseMenu=pase_to_engene_pause_func
     levelOBJ = Level(render_loop)
     render_loop.level=levelOBJ
@@ -617,6 +610,31 @@ def gravity():
 
 #
 debug_elements = []
+import os, psutil
+process = psutil.Process()
+
+def convert_bytes_to_megabytes_or_kilobytes(byte_size):
+    if byte_size >= 10 * 1024 * 1024:  # If at least 10 MB
+        result = byte_size / (1024 * 1024)
+        unit = "MB"
+    elif byte_size >= 10 * 1024:  # If at least 10 KB
+        result = byte_size / 1024
+        unit = "KB"
+    else:
+        result = byte_size
+        unit = "bytes"
+    return f"{result:.2f} {unit}"
+
+def cpu_thread():
+    global CPU_usage
+    while True:
+        CPU_usage = psutil.cpu_percent(interval=1)
+        time.sleep(1)
+threading.Thread(target=cpu_thread).start()
+
+
+
+CPU_usage=0.0
 
 
 def on_debub_ON(tr):
@@ -629,6 +647,9 @@ def on_debub_ON(tr):
         debug_infos = [
             f"Player pos-raw {render_loop.getXY(player)}",
             f"World_offset {render_loop.map_ofset_x} : {render_loop.map_ofset_y}",
+            f"Total Memory {convert_bytes_to_megabytes_or_kilobytes(process.memory_info().rss)}",
+            f"Total Memory {convert_bytes_to_megabytes_or_kilobytes(process.memory_info().vms)}",
+            f"CPU Usage {CPU_usage}s%",
 
         ]
         debug_elements.clear()
@@ -752,6 +773,7 @@ def clearLevel():
     level_store = []
     daeth_areas = []
     finisch_areas = []
+    render_loop.clearLightning()
     render_loop.togleSchadows(SCHADOW_STATE.OFF)
     render_loop.no_schadow_elements=[]
     render_loop.removeElement(player)
@@ -927,11 +949,15 @@ def check_interaction(px,py,pressedKeys):
 
 
 def pase_to_engene_pause_func():
+    global in_pause_menu
+
+    in_pause_menu = not in_pause_menu
     if in_pause_menu:
         render_loop.set_pause_ANY_CUTSENE_DIALOG(True)
         render_loop.pauseMenuFunc = display_pause_menu()
     else:
         render_loop.set_pause_ANY_CUTSENE_DIALOG(False)
+
         render_loop.pauseMenuFunc=render_loop.pauseMenuFunc()
 
 
@@ -989,7 +1015,7 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
         pushUp()
 
 
-        if render_loop.viewpoint==ViewPoints.topdown:
+        if render_loop.viewpoint==ViewPoints.sideview:
 
             gravity()
             jump_s()

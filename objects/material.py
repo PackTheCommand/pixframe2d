@@ -3,7 +3,7 @@ import json
 from PIL import Image, ImageTk
 
 list=[]
-preview_show = Image.open("imgs/img-tools/material_overlay.png").resize((25,25),Image.NEAREST)
+preview_show = Image.open("imgs/img-tools/material_overlay_32.png").resize((25,25),Image.NEAREST)
 list.append(preview_show)
 
 class Material:
@@ -13,6 +13,7 @@ class Material:
                 info = json.load(f)
         map=self.split_texture(path+info["map"])
 
+        self.ce=map["center"]
         self.info = info
         self.map = map
         self.category = info["category"]
@@ -23,19 +24,22 @@ class Material:
         self.nw = map["nw"]
         self.ne = map["ne"]
         self.sw = map["sw"]
-        self.uniquename = info["uniqueName"]
         self.se = map["se"]
+        self.uniquename = info["uniqueName"]
         self.preview=None
 
     from PIL import Image
-
+    def getTexture(self,direction):
+        if direction=="ce":
+            return self.map["center"]
+        return self.map.get(direction,self.map["center"])
     def gPreview(self,x,y):
         return self.generatePreview(x,y)
     def generatePreview(self,x,y):
         if self.preview:
             return self.preview
 
-        prev = self.map[self.info["preview"]].convert("RGBA")
+        prev = self.map["full"]
         print(prev,preview_show.convert("RGBA"))
 
         i=Image.alpha_composite(prev.resize((x,y),Image.NEAREST), preview_show)
@@ -43,8 +47,9 @@ class Material:
         return self.preview
 
     def split_texture(self,filename):
+        grid_size=50
         # Load the PNG image
-        image = Image.open(filename)
+        image = Image.open(filename).resize((grid_size*3,grid_size*3),Image.NEAREST)
 
         # Get the dimensions of the image
         width, height = image.size
@@ -72,7 +77,8 @@ class Material:
         # Iterate through the grid coordinates and extract the subtextures
         for direction, (start, end) in zip(['nw', 'n', 'ne', 'w', 'center', 'e', 'sw', 's', 'se'], grid_coordinates):
             subtexture = image.crop((*start, *end))
-            subtextures[direction] = subtexture
+            subtextures[direction] = ImageTk.PhotoImage(subtexture)
+        subtextures["full"]=image
 
         return subtextures
 
