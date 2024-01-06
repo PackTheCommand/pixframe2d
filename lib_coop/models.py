@@ -141,8 +141,7 @@ class Client:
             self.receveFunction(head,body)
 
 
-
-if __name__ == "__main__":
+def beHost():
     server = Server("localhost", 5555)
     server_thread = threading.Thread(target=server.start)
     server_thread.start()

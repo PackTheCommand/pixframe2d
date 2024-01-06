@@ -7,6 +7,27 @@ from scripting.objects.level import Level
 from audio import sound
 
 
+MULTIPLAYER_CLIENT=None
+
+
+
+
+from tkinter import messagebox
+
+def genuserid():
+
+    import random
+    return ''.join(random.choices(["1","2","3", "4", "5","6","7","8","9","0","a","b","c","d","e","f"], k=10))
+
+
+randomuid=genuserid()
+def display_message():
+    tk=messagebox.showinfo("User ID",randomuid)
+
+
+threading.Thread(target=display_message).start()
+
+
 INTERACTION_RADIUS=50
 
 with open("leveldata/levels.json") as f:
@@ -20,6 +41,95 @@ from ui_elements import Button
 import movable_objects
 
 
+backupKeypressfunc=None
+def keyOptions():
+    global backupKeypressfunc
+
+    bs=[]
+
+
+
+    def changekey(uid):
+        render_loop.removes(bs)
+        key_text=render_loop.addText("Please press a key", SCREEN_WIDTH/2-100, 100, 30, (30, 255, 100), uses_map_offset=False,)
+        key_text2 = render_loop.addText("Courant selected: : "+uid, SCREEN_WIDTH / 2 - 180, 140, 30, (30, 255, 100),
+                                       uses_map_offset=False )
+
+        def listenkey(key:set,s,x):
+            if len(key)==1:
+                k=key.pop()
+
+                if k==pygame.K_ESCAPE:
+                    render_loop.keypressfunction=backupKeypressfunc
+                    render_loop.removes([key_text,key_text2])
+                    keyOptions()
+                    return
+                keyConfig[uid]=(k,pygame.key.name(k))
+                with open("keyconfig.json","w") as f:
+                    json.dump(keyConfig,f)
+
+                render_loop.keypressfunction=backupKeypressfunc
+
+                render_loop.removes([key_text,key_text2])
+                keyOptions()
+
+
+        backupKeypressfunc=render_loop.keypressfunction
+        render_loop.keypressfunction=listenkey
+
+        print(uid)
+    bs.append(render_loop.addText("Key Config", SCREEN_WIDTH/2-50, 10, font_size=40))
+    def returnToTitle():
+        render_loop.removes(bs)
+        title_screen(render_loop)
+
+    bs.append(Button(render_loop,0,0,20,30,"<",click_function=returnToTitle,font_size=36))
+
+    for n,option in enumerate(keyConfig):
+
+        bs.append(Button(render_loop, SCREEN_WIDTH/2-60, 60+34*n, width=200, height=30, text=f"{option } : {keyConfig[option][1]}", click_function=lambda keyuid=option:  changekey(keyuid), font_size=20))
+
+
+
+import lib_coop.models as multiplayerModels
+def ShowOptions():
+    keyOptions()
+
+    pass
+
+
+def showMultiplayerMenu():
+    bs=[]
+    def returnToTitle():
+        render_loop.removes(bs)
+        title_screen(render_loop)
+
+
+    def host_game():
+        def gamehost():
+            render_loop.addText("Hosting game...", 10, 10, 30, (30, 255, 100),)
+            multiplayerModels.beHost()
+
+        threading.Thread(target=gamehost()).start()
+
+        pass
+
+    def join_game():
+        pass
+        c=multiplayerModels.Client()
+
+    bs.append(Button(render_loop, 0, 0, 20, 30, "<", click_function=returnToTitle, font_size=36))
+
+    B=Button(render_loop, SCREEN_WIDTH/2-60, 60, width=200, height=30, text="Host", click_function=host_game, font_size=20)
+
+    bs.append(B)
+
+    B=Button(render_loop, SCREEN_WIDTH/2-60, 120, width=200, height=30, text="Join Game", click_function=join_game,font_size=20)
+
+    bs.append(B)
+
+
+
 def title_screen(render_loop):
     def clear_content():
         nonlocal render_loop
@@ -29,12 +139,12 @@ def title_screen(render_loop):
 
     def play():
         # print("klicked")
-        render_loop.hides([play, load, quit, title,creadits])
+        render_loop.hides(blist)
         level_select_screen()
 
     def cred():
         # print("klicked")
-        render_loop.hides([play, load, quit, title, creadits])
+        render_loop.hides(blist)
         display_Credits()
 
     xline1 = SCREEN_WIDTH / 2 - 100
@@ -45,6 +155,14 @@ def title_screen(render_loop):
         pygame.quit()
         quit()
 
+    def showOptions():
+        render_loop.hides(blist)
+        ShowOptions()
+
+    def showMultiplay():
+        render_loop.hides(blist)
+        showMultiplayerMenu()
+
 
 
     play = Button(render_loop, xline1, 200, width=200, height=50, text="Play", click_function=play, font_size=35)
@@ -54,6 +172,14 @@ def title_screen(render_loop):
     quit = Button(render_loop, xline1, 360, width=200, height=50, text="Quit", click_function=None, font_size=35)
 
     creadits = Button(render_loop, 0, 0, width=80, height=20, text="Creadits", click_function=cred, font_size=25)
+
+    options= Button(render_loop, SCREEN_WIDTH-80, 0, width=80, height=20, text="Options", click_function=showOptions, font_size=25)
+
+
+    multiplayer = Button(render_loop, SCREEN_WIDTH - 100, 40, width=100, height=20, text="Multiplayer", click_function=showMultiplay,
+                     font_size=25)
+
+    blist=[play,load,quit,title,creadits,options,multiplayer]
     """checkbox2 = Checkbox(render_loop, 100, 230, width=20, height=20, label="Option 2")
 
     input_text = TextInput(render_loop, 100, 300, width=200, height=40, placeholder="Enter text here")
@@ -834,15 +960,20 @@ def display_pause_menu():
 
     def play_select_level():
         global in_pause_menu
+
         in_pause_menu = False
         # print("klicked")
+
+
+        render_loop.pauseMenu=None
+
         pauseAll()
 
 
         render_loop.removes([play, quitb, levsel,pause_titel])
         clearLevel()
-        startGame()
-        level_select_screen()
+
+        title_screen(render_loop)
 
     play = Button(render_loop, 100, 200, width=200, height=50, text="Restart", click_function=replay, font_size=35)
 
@@ -865,11 +996,12 @@ def display_pause_menu():
     return lambda p=play,q=quitb,lev=levsel,pt=pause_titel,:pause_end([p,q,lev,pt])
 hide_display_pause_function=None
 
-
-keyConfig={
+with open("keyconfig.json","r") as f:
+    keyConfig=json.load(f)
+"""keyConfig={
     "Button-Interact_Main":(pygame.K_q,"Q"),
     "Button-Interact_Second":(pygame.K_e,"E"),
-}
+}"""
 
 last_interact_id=None
 last_interact_Kname=""
@@ -961,6 +1093,11 @@ def pase_to_engene_pause_func():
         render_loop.pauseMenuFunc=render_loop.pauseMenuFunc()
 
 
+def getKeyHandle(keyid):
+    if keyid in keyConfig:
+        return keyConfig[keyid][0]
+    return 0
+
 def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
     global player, jumping, jumpacseleration,escape_pressing,in_pause_menu,hide_display_pause_function
     """Function runs on every tick """
@@ -996,13 +1133,13 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
             x += 1
 
 
-        if pygame.K_w in pressed_keys:
+        if getKeyHandle("gc-attac-primary") in pressed_keys:
             player_animation.play("attack")
 
-        if pygame.K_s in pressed_keys:
+        if getKeyHandle("Button-Sprint") in pressed_keys:
             sprinting=True
 
-        if pygame.K_SPACE in pressed_keys:
+        if getKeyHandle("gc-control-jump") in pressed_keys:
             if not jumping:
                 if falling:
                     print("fall")

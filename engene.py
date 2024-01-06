@@ -631,6 +631,7 @@ class GameRenderLoop:
 
             #self.screen.fill((0, 0, 0))  # Fill the screen with black
             if bool(self.keypressfunction)&(not self.in_dialog):
+
                 self.keypressfunction(pressed_keys,mouseButtons_pressed,presse_triger_once)
 
             if (pygame.K_ESCAPE in presse_triger_once)&bool(self.pauseMenu):

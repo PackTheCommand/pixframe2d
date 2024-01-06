@@ -93,7 +93,7 @@ def rounded_polygon(start, end, text, font, screen, outline_margin=2):
     # Draw text
     # pygame.draw.polygon(screen, BLACK, points2, outline_width)
     text_surface = font.render(text, True, Forground)
-    print("width",text_surface.get_width())
+    #print("width",text_surface.get_width())
 
     pygame.draw.rect(screen, BackgroundC,(start[0]+10,start[1]-20,text_surface.get_width()+
                                         15,text_surface.get_height()+10),border_radius=10,)
@@ -139,11 +139,12 @@ class DialogService:
         screen.blit(circle_surface, (0, 0))  # ,special_flags=pygame.BLEND_RGBA_ADD)
 
     curantService=None
-    def __init__(self, renderloop):
+    def __init__(self, renderloop,kt=None):
         self.text_popuop_efect_index =0
         global limgs
+        self.keytrans=kt
 
-
+        self.currant_text_group_len=0
         self.renderloop = renderloop
         DialogService.curantService=self
         self.curdialog=None
@@ -165,22 +166,34 @@ class DialogService:
     def while_dialog(self,key_inputs,screen:pygame.surface.Surface,mouse_input):
         global loading_progress
         max_lines_on_screen=4
+        print("dindex=",self.dialog_index)
+
+        skip_spaceKey=False
         global line_ofset,max_row
+        if not (self.dialog_endet):
+            if pygame.K_SPACE in key_inputs:
+                lentext = len(self.store["text"])
+                if (self.text_popuop_efect_index <= lentext):
+                    self.text_popuop_efect_index = lentext + 1
+                    skip_spaceKey=True
+
+
+
 
 
         self.draw_alpha_circle(screen, self.fade_in, self.renderloop.screen_width, self.renderloop.screen_height)
         loading_progress +=1
-        print("loading...",loading_progress,)
+        #print("loading...",loading_progress,)
         if self.FLAG_BACKGROUND_MODE == BackgoundModeFlags.STORY:
 
             if not (self.fade_in <= 0):
-                print(self.fade_in)
+                #(self.fade_in)
 
                 if self.fade_in_or_out==fade.OUT:
                     self.fade_in+=3
 
 
-                    print(loading_progress)
+                    #print(loading_progress)
                     if self.fade_in>=350:
                         self.fade_in-=2
                         self.renderloop.togleSchadows(False)
@@ -197,7 +210,7 @@ class DialogService:
                 self.renderloop.pause_gameplay_level_engene = True
 
             if not self.dialog_endet:
-                if pygame.K_SPACE in key_inputs:
+                if (not skip_spaceKey)&(pygame.K_SPACE in key_inputs):
 
                     if self.dialog_index >= len(self.curdialog):
 
@@ -211,7 +224,7 @@ class DialogService:
                         self.dialog_index += 1
             else:
                 if self.fade_in != 0:
-                    print(self.fade_in)
+                    #print(self.fade_in)
 
                     if self.fade_in_or_out == fade.OUT:
                         self.fade_in += 2
@@ -228,7 +241,11 @@ class DialogService:
                     self.renderloop.togleSchadows(True)
         else:
             if not self.dialog_endet:
-                if pygame.K_SPACE in key_inputs:
+
+
+
+                if (not skip_spaceKey)&(pygame.K_SPACE in key_inputs):
+
 
                     if self.dialog_index >= len(self.curdialog):
 
@@ -238,6 +255,12 @@ class DialogService:
 
                         return
                     else:
+
+
+
+
+
+
                         self.ren_new_dialog_part(screen)
                         self.dialog_index += 1
                         line_ofset=0
@@ -284,11 +307,14 @@ class DialogService:
 
 
         if self.store["text"]!=[]:
+            self.currant_text_group_len=len(self.store["text"])
+            #print("t",self.store["text"])
             #line breaking
             spaceofset = -1
             max_width = self.renderloop.screen_width//12*7
             wi = 0
             last_space_a = 0
+
             nl = []
             for n, text in enumerate(self.store["text"]):
 
@@ -319,11 +345,14 @@ class DialogService:
             lastwidth=0
 
             row=0
-            self.text_popuop_efect_index+=0.5
+            if self.text_popuop_efect_index<= len(self.store["text"]):
+                self.text_popuop_efect_index+=0.5
+            print("ti",self.text_popuop_efect_index)
             for n,text in enumerate(nl):
+                print(n)
                 if n>self.text_popuop_efect_index:
-                    continue
-                print(row)
+                    break
+                #print(row)
 
                 if text=="space":
                     lastwidth+=10
@@ -334,16 +363,18 @@ class DialogService:
                     lastwidth=0
                     continue
 
+
+
                 if line_ofset<=row<max_lines_on_screen-line_ofset:
                     screen.blit(text, (self.renderloop.screen_width//6+lastwidth, (self.renderloop.screen_height//4)*3+50*(row-line_ofset)-10))
 
 
                 lastwidth+=text.get_width()
-            if row > max_row:
-                max_row += 1
+                if row > max_row:
+                    max_row += 1
 
-            if (row > max_row)&(row > line_ofset):
-                line_ofset += 1
+                if (row > max_row)&(row > line_ofset):
+                    line_ofset += 1
 
 
 
@@ -361,6 +392,7 @@ class DialogService:
 
 
         it=self.curdialog[self.dialog_index]
+        print("it",it)
         if it.get("img")!=None:
             self.store["img"]=pygame.transform.scale(pygame.image.load(it["img"].replace("$levdir",self.renderloop.level.path[:-1])),(self.renderloop.screen_width,self.renderloop.screen_height))
         self.store["text"]=[]
@@ -368,6 +400,7 @@ class DialogService:
             col = (255, 255, 255)
             toglecol=""
             for i in it["text"].split(" "):
+
                 if i.startswith("*"):
                     i=i[1:]
                     toglecol="imp"
