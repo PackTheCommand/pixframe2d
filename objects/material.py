@@ -6,6 +6,7 @@ list=[]
 preview_show = Image.open("imgs/img-tools/material_overlay_32.png").resize((25,25),Image.NEAREST)
 list.append(preview_show)
 
+
 class Material:
     def __init__(self, info=None,file=None,path=None):
         if file:
