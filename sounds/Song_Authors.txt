@@ -1,0 +1,11 @@
+#Note Note: 
+Authors will later again be displayed In game If the song is played 
+After a bug cousing songtitles to not be set corectly is fixed
+
+
+Communicate_soundtrack: by
+https://freesound.org/people/StephieQueen/
+
+
+mushroom-background-music: by
+https://freesound.org/people/Sunsai/
