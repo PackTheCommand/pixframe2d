@@ -62,6 +62,7 @@ class lua_Importer:
         self.runtime=None
         api = API(render_loop)
         self.api = api
+
         api.stopSound=importantArtibutes["stop_sound"]
         api.Player = scripting.objects.player.Player(render_loop, playerId)
         api.Objects = scripting.objects.objectCol.Objects(render_loop, )

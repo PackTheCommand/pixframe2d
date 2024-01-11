@@ -33,7 +33,7 @@ def get_files_in_folder(folder_path):
 class ViewPoints:
     topdown=0
     sideview=1
-
+from effectShaders import baseShader,destructionIlusion,Screenshake
 
 import services.dialog_service
 class GameRenderLoop:
@@ -46,9 +46,12 @@ class GameRenderLoop:
         self.pause_gameplay_level_engene=False
         self.break_any_non_game_mode = False
         self.shadow_store = {}
+        self.info_only_engagedShaderName="_No Shader"
         self.shadow_textures = {}
         self.no_schadow_elements = []
         self.display_debug = False
+        self.shaders={}
+        self.game_is_paused=False
         def emptyPauseFunction():
             print("EmptyFunction")
             return emptyPauseFunction
@@ -58,7 +61,7 @@ class GameRenderLoop:
         self.level=None
 
 
-
+        self.activeShader:baseShader.Shader=None
 
 
 
@@ -104,6 +107,34 @@ class GameRenderLoop:
 
     def REQUEST_STATUS_IN_NOT_GAME_MODE(self):
         return self.in_dialog or self.in_cutsene
+
+    def engageShader(self,shader:baseShader.Shader):
+        if type(shader)==str:
+            try:
+                shader=self.shaders[shader]
+                self.activeShader=shader
+                print("engaged shader: "+str(shader.name))
+                self.info_only_engagedShaderName=str(shader)
+                return True
+            except:
+                print("EN-RENDER_ERROR_SH_NF : cant find shader: "+str(shader))
+                return False
+        self.activeShader=shader
+        print("engaged shader: "+str(type(shader).__name__))
+    def disengageShaders(self):
+        self.info_only_engagedShaderName="No Shader"
+        self.activeShader=None
+    def createShader(self,refer,name,*args,**kwargs):
+        if name=="sh.destructionIllusion":
+            self.shaders[refer]=destructionIlusion.DestrucktionShader(*args,**kwargs)
+            return True
+        elif name=="sh.screenshake":
+            self.shaders[refer]=Screenshake.ScreenshakeShader(*args,**kwargs)
+            return True
+        return False
+
+
+
 
     def after(self, duration, function):
         scheduled_time = pygame.time.get_ticks() + duration
@@ -171,11 +202,13 @@ class GameRenderLoop:
             self.hidden_elements[element_id]=self.elements.pop(element_id)
 
     def hides(self,element_ids:list):
+        if element_ids is None:
+            return
         for id in element_ids:
 
             if not (type(id)==int):
-
-                id.__hide__()
+                if id:
+                    id.__hide__()
                 continue
             self.hide(id)
     def removes(self,element_ids:list):
@@ -183,9 +216,11 @@ class GameRenderLoop:
             print(id)
 
             if not (type(id)==int):
+                if id:
+                    self.removes(id.__remove__())
 
 
-                self.removes(id.__remove__())
+
                 continue
             self.removeElement(id)
     def getSurface(self, element_id)->pygame.Surface|None:
@@ -693,14 +728,18 @@ class GameRenderLoop:
                     self.debug_interface_function(False)
 
 
+            if (self.activeShader!=None)&(not self.game_is_paused):
+                self.activeShader.apply(self.screen)
+            pygame.display.flip()  # Update the display
             self.clock.tick(60)
 
 
-            pygame.display.flip()  # Update the display
+
               # Limit to 60 FPS
             self.screen.fill((0, 0, 0))
         pygame.quit()
         sys.exit()
+
 
     def togleSchadows(self, param):
         self.flagXL_SCHADOW_FILTER=param

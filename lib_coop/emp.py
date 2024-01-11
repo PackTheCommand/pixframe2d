@@ -110,7 +110,11 @@ class MepProtocol:
 
 
 
-        data=decrypt(data,self.own_private_key)
+        try:
+            data=decrypt(data,self.own_private_key)
+        except Exception as e :
+            print("Data Error e:",e)
+            return None
         return self.receive_jso(data)
 
 

@@ -28,7 +28,7 @@ import ui_code
 
 from interfaces.objectPropertiesMenu import ObjectPropertiesMenu
 
-folders = {"main": {"deco": {}, "blocks": {}, "actions": {}, "materials": {}}}
+folders = {"main": {"deco": {}, "blocks": {}, "actions": {}, }}#"materials": {}}}
 
 
 def addSubfolder(path: str, name: str):
@@ -168,6 +168,9 @@ class CanvasApp:
         self.texture_data = [
             {"name": "🎯 Spawnpoint", "path": "imgs/spawnpoint.png", "type": "spawn", "collision": False,
              "folder": "actions/"},
+            {"name": "Event Trigger", "path": "imgs/cutsene_triger.png", "type": "void", "collision": False,
+             "folder": "actions/"},
+
             {"name": "💀 Death-Area", "path": "imgs/death_area.png", "type": "death_area", "collision": False,
              "folder": "actions/"},
             {"name": " Light", "path": "imgs/light.png", "type": "light", "collision": False,
@@ -226,7 +229,7 @@ class CanvasApp:
                      "type": "object",
                      "collision": True, "folder": "blocks/" + folder + "/"}
                 ]
-        getMaterialsInFolder("materials/")
+        #######getMaterialsInFolder("materials/")
 
 
 
@@ -439,6 +442,7 @@ class CanvasApp:
             "material": self.curant_object_data["materialID"] if "collection" in self.curant_object_data  else None,
             "type": self.curant_object_data["type"],
             "texture": self.curant_object_data["path"] if not "collection" in self.curant_object_data else None,
+            "texM3SelSide":"",
             "x": x - self.ofset_x, "y": y - self.ofset_y,
             "collision": self.curant_object_data["collision"],
             "width": BLOCK_SIZE, "height": BLOCK_SIZE,
@@ -1102,7 +1106,7 @@ class CanvasApp:
             # print(snapped_x+grid_offset_x)
             print("act:",snapped_x, x)
             if self.selected_is_Material:
-                image=self.getMaterialSide(self.curant_object_data["mat_obj"],snapped_x,snapped_y)
+                image,direction=self.getMaterialSide(self.curant_object_data["mat_obj"],snapped_x,snapped_y)
 
             else:
                 image = createImage(self.current_texture, 50, 50, name=self.curant_object_data["path"].split("/")[-1])
@@ -1112,8 +1116,13 @@ class CanvasApp:
 
             element = self.canvas.create_image(snapped_x, snapped_y, image=image, tags=["#movable"], anchor="nw")
             if self.selected_is_Material:
+
                 self.currant_editFile.addItem(snapped_x,snapped_y,element,self.curant_object_data["mat_obj"])
-            self.elements.append(self.addCuraantSelected(element, snapped_x, snapped_y))
+            newElement=self.addCuraantSelected(element, snapped_x, snapped_y)
+            if self.selected_is_Material:
+                newElement["texM3SelSide"] = direction
+
+            self.elements.append(newElement)
             self.canvas.tag_raise("coordinate_labels")
         else:
             print("nothing selected")
@@ -1325,6 +1334,7 @@ class CanvasApp:
 
 
 
+
         directional_redirect={"W":"ne","E":"nw","N":"s","S":"n","NSEW":"ce",
          "NW":"se","NE":"sw","SW":"ne","SE":"nw","NSE":"w","NSW":"e","SEW":"n","NEW":"s",
 
@@ -1336,8 +1346,8 @@ class CanvasApp:
         if e:dire_str+="E"
         if w:dire_str+="W"
         print("side:",directional_redirect.get(dire_str, "Error"),(n,e,s,w))
-
-        return m_obj.getTexture(directional_redirect.get(dire_str, "ce"))
+        direct=directional_redirect.get(dire_str, "ce")
+        return m_obj.getTexture(direct),direct
 
 
 

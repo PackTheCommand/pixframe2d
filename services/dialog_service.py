@@ -174,7 +174,7 @@ class DialogService:
             if pygame.K_SPACE in key_inputs:
                 lentext = len(self.store["text"])
                 if (self.text_popuop_efect_index <= lentext):
-                    self.text_popuop_efect_index = lentext + 1
+                    self.text_popuop_efect_index = lentext + 3
                     skip_spaceKey=True
 
 

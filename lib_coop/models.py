@@ -2,7 +2,7 @@ import socket
 import threading
 from tkinter import Tk, Button
 
-import emp
+from.emp import MepProtocol
 
 class Server:
     def __init__(self, host, port):
@@ -27,13 +27,13 @@ class Server:
             self.clients.append((client_socket, client_thread))
 
     def handle_client(self, client_socket):
-        emp_inst=emp.MepProtocol(client_socket)
+        emp_inst=MepProtocol(client_socket)
         uuid=hash(client_socket.getpeername())
         self.emp_inst_dict[uuid]=emp_inst
         print(f"Handling client {client_socket.getpeername()}")
         while True:
             try:
-                data = client_socket.recv(1024)
+                data = client_socket.recv(4096)
                 if not data:
                     break
 
@@ -49,9 +49,22 @@ class Server:
     def examine(self,emp_inst, data,uuid):
         r=emp_inst.any(data)
         if r:
-            head,body=r
 
-            if head=="message":
+            head,body=r
+            if head=="i-am":
+                username=body["username"]
+                self.connected_uuids[username]=uuid
+                return
+
+
+
+            for client_uuid in self.emp_inst_dict:
+                if client_uuid==uuid:
+                    continue
+                self.emp_inst_dict[client_uuid].send(head,body)
+
+
+            """if head=="message":
                 print(f"Received data: {head}, {body}")
                 receivers=body["r"]
                 sender=body["s"]
@@ -73,12 +86,9 @@ class Server:
                             print(f"Error -: {e}")
                             emp_inst.send("err-connection","User Not Connected")
                             self.emp_inst_dict.pop(self.connected_uuids[receiver])
-                            self.connected_uuids.pop(receiver)
+                            self.connected_uuids.pop(receiver)"""
 
 
-            elif head=="i-am":
-                username=body["username"]
-                self.connected_uuids[username]=uuid
 
 
 
@@ -90,11 +100,13 @@ class Client:
     def __init__(self, host, port,username):
         self.host = host
         self.port = port
+
         self.username = username
         self.receveFunction=lambda head,body:print(f"Received data: {head}, {body}")
 
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.emp_inst = emp.MepProtocol(self.client_socket)
+        self.emp_inst = MepProtocol(self.client_socket)
+        #self.client_socket.settimeout(5000)
 
 
     def connect(self):
@@ -122,7 +134,7 @@ class Client:
         emp_inst=self.emp_inst
         while True:
             try:
-                data = self.client_socket.recv(1024)
+                data = self.client_socket.recv(4096)
                 if not data:
                     break
 
@@ -140,11 +152,11 @@ class Client:
             head,body=r
             self.receveFunction(head,body)
 
-
+standartdarta=("localhost", 5555)
 def beHost():
     server = Server("localhost", 5555)
-    server_thread = threading.Thread(target=server.start)
-    server_thread.start()
+    server.start()
+
 
     """client1 = Client("localhost", 5555)
     #client2 = Client("localhost", 5555)

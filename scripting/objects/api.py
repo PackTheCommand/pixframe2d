@@ -2,6 +2,7 @@
 from .player import Player
 from .objectCol import Objects
 from .level import Level
+
 from services.dialog_service import DialogService
 
 class API:
@@ -12,8 +13,19 @@ class API:
         self.level:Level
         self.stopSound:any
         self.VERSION:str
+
         self.levpath:str
+
         self.uuidTO_EL_ID:dict
+
+    def innit_shader(self,refer,name,*args,**kwargs):
+        self.__renderloop.createShader(refer,name,*args,**kwargs)
+    def engageShader(self,refer):
+
+        self.__renderloop.engageShader(refer)
+    def disengageActiveShader(self):
+        self.__renderloop.disengageShaders()
+
 
     def playCutScene(self,file):
         print(self.__renderloop)
