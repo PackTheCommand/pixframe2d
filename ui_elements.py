@@ -60,9 +60,9 @@ class Button:
         self.is_hovered = False
         self.is_clicked = False
 
-        self.button_inactive = render_loop.addImageFixedWidth("imgs/button_inactive.png", x, y, width=width, height=height,uses_map_offset=use_map_ofset)
-        self.button_active = render_loop.addImageFixedWidth("imgs/button_active.png", x, y, width=width, height=height,uses_map_offset=use_map_ofset)
-        self.button_clicked = render_loop.addImageFixedWidth("imgs/button_clicked.png", x, y, width=width, height=height,uses_map_offset=use_map_ofset)
+        self.button_inactive = render_loop.addImageFixedWidth("imgs/button_inactive.png", x, y, width=width, height=height,uses_map_offset=use_map_ofset,noShadow=True)
+        self.button_active = render_loop.addImageFixedWidth("imgs/button_active.png", x, y, width=width, height=height,uses_map_offset=use_map_ofset,noShadow=True)
+        self.button_clicked = render_loop.addImageFixedWidth("imgs/button_clicked.png", x, y, width=width, height=height,uses_map_offset=use_map_ofset,noShadow=True)
 
         self.button_surface = render_loop.getSurface(self.button_inactive)
         self.button_surface_active = render_loop.getSurface(self.button_active)

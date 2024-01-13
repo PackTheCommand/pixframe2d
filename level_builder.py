@@ -1249,7 +1249,9 @@ class CanvasApp:
                 json.dump(
                     {"elements": self.elements, "paths": pp,
                      "path-metadata": self.path_metadata, "level-metadata": self.level_matadata,
+
                      "scripts": self.curant_scripts}, f)
+        savePreview(self.canvas,sf+"/preview.png")
 
     def toggle_fill_mode(self):
         self.fill_mode = not self.fill_mode
@@ -1353,6 +1355,14 @@ class CanvasApp:
 
 
 
+from PIL import ImageGrab
+
+def savePreview(widget,filepath):
+    x=root.winfo_rootx()+widget.winfo_x()
+    y=root.winfo_rooty()+widget.winfo_y()
+    x1=x+widget.winfo_width()
+    y1=y+widget.winfo_height()
+    ImageGrab.grab().crop((x,y,x1,y1)).resize((206,114)).save(filepath)
 
 class fake_event():
     def __init__(self, x, y):

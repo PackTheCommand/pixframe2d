@@ -32,6 +32,7 @@ class Animation:
     def getSurface(self):
         return self.images[0]
     def play(self,name):
+        """plays a animation """
         self.curant_sub_animation_name=name
         self.loop_sub=False
         self.subAnimation_counter=0

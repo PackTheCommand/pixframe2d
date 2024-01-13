@@ -1,4 +1,5 @@
 import json
+import math
 import threading
 import time
 
@@ -12,7 +13,7 @@ MULTIPLAYER_CLIENT:multiplayerModels.Client=None
 I_AM_HOST=False
 
 
-
+DISPLAY_STARTUP_LOGO=True
 
 flags={"multiplayer":False}
 
@@ -23,20 +24,27 @@ def disableFlag(id):
     flags[id]=False
 
 
-
+import random
 from tkinter import messagebox
 
 def genuserid():
 
-    import random
+
     return ''.join(random.choices(["1","2","3", "4", "5","6","7","8","9","0","a","b","c","d","e","f"], k=10))
 
 
+def genEntityId():
+    return '#en-'.join(random.choices(["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "a", "b", "c", "d", "e", "f"], k=10))
 
+def moveMultiplayersOutOfWay():
+    for player in OtherPlayers:
+        render_loop.moveto(OtherPlayers[player][0],-300,-300)
+        render_loop.moveto(OtherPlayers[player][2], -300, -300)
+player_id_to_name={}
 def clientListenData_IN(head,body):
     global KillPositionUpdateFlag
     if head=="sync_update":
-        print("sync_update")
+        #print("sync_update")
 
         match body["update-type"]:
 
@@ -49,24 +57,139 @@ def clientListenData_IN(head,body):
 
                 pass
             case "player-pos-update":
-                pos=body["pos"].split(":")
-                updateMultyPlayerposition(body["player-id"],int(pos[0]),int(pos[1]))
+                if not player_is_in_deathScreen:
+                    pos=body["pos"].split(":")
+                    updateMultyPlayerposition(body["player-id"],int(pos[0]),int(pos[1]))
 
                 pass
             case "player-join-world":
-                AddNewPlayerToLevel(body["player-id"],)
+                #AddNewPlayerToLevel(body["player-id"],)
                 if  body["player-id"]==randomuid:
                     print("I joined the world")
                 print("Player joined World",body["player-id"])
+                player_id_to_name[body["player-id"]]=body["player-name"]
                 pass
             case "ask_player_spawn":
                 sendCliendSelfJoinWorld()
             case "back-to-title":
                 KillPositionUpdateFlag=True
-                multiplayer_executeBackToTitle()
                 resetMulty_players()
+                multiplayer_executeBackToTitle()
             case "lua-function-call":
                 executeLuaFunctionCall(body["function-name"])
+            case "player-animation-start":
+
+                updateMultyPlayerAnimation(body["player-id"],body["animation-name"])
+            case "player-animation-loop":
+                updateMultyPlayerAnimation(body["player-id"],body["animation-name"],True,body["rep"])
+    elif head =="player-action":
+        match body["action"]:
+            case "attack":
+                print("Recived Attack")
+                if not player_is_in_deathScreen:
+                    checkPlayerRecivesDamage(body["pos"],body["radius"],body["pow"])
+
+        pass
+
+
+class HealthBar:
+
+    heathBarItems=[]
+    HeathBar_items_bg=[]
+    last_heath_since_update=0
+
+
+    @staticmethod
+    def addHeathBarItem():
+        l=len(HealthBar.heathBarItems)
+        item=render_loop.addImage("imgs/health_icon.png",10+40*l,20,uses_map_offset=False,noShadow=True)
+        HealthBar.heathBarItems.append(item)
+
+    @staticmethod
+    def addDeathHaertBarItem():
+        global play
+        l=len(HealthBar.heathBarItems)
+        item=render_loop.addImage("imgs/death_health_icon.png",10+40*l,20,uses_map_offset=False,noShadow=True)
+        HealthBar.HeathBar_items_bg.append(item)
+    @staticmethod
+    def removeHeathBarItem():
+        l=len(HealthBar.heathBarItems)
+        item=render_loop.removeElement(HealthBar.heathBarItems.pop(Health))
+
+    @staticmethod
+    def removeHeathBarItems():
+        render_loop.removes(HealthBar.heathBarItems)
+        HealthBar.heathBarItems.clear()
+        render_loop.removes(HealthBar.HeathBar_items_bg)
+        HealthBar.HeathBar_items_bg.clear()
+
+
+
+def playerDealDamage(amount):
+    global Health
+    Health-=amount
+    for i in range(0,amount):
+        HealthBar.removeHeathBarItem()
+    if Health<=0:
+        on_death()
+
+def checkPlayerRecivesDamage(pos, radius, amount):
+    playerPos=render_loop.getXY(player)
+    if is_point_in_radius(playerPos[0],playerPos[1],pos[0],pos[1],radius):
+        print("Player recives damage")
+        playerDealDamage(amount)
+        return
+    print("Nodamage",pos,radius,amount,playerPos)
+
+
+def is_point_in_radius(x1, y1, x2, y2, radius):
+    """
+    Check if a point (x1, y1) is within the specified radius around another point (x2, y2).
+
+    Parameters:
+    - x1, y1: Coordinates of the point to check.
+    - x2, y2: Coordinates of the center point.
+    - radius: The radius around the center point.
+
+    Returns:
+    - True if the point is within the radius, False otherwise.
+    """
+    distance = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+    return distance <= radius
+
+class PARMS:
+    """Values of time are given in ticks"""
+    attack_cooldown=30
+    player_attack_radius_def=100
+    player_attack_pow_def=1
+
+
+class Cooldowns:
+    attack_cooldown=PARMS.attack_cooldown
+
+def Scedued_Coldowns():
+    global Cooldowns
+
+
+    if Cooldowns.attack_cooldown>=-1:
+        Cooldowns.attack_cooldown-=1
+
+    pass
+
+def ACTION_ATTACK(pos, radius,power):
+    global MULTIPLAYER_CLIENT
+
+
+    if flags["multiplayer"]:
+        print("sending attack")
+
+
+
+        MULTIPLAYER_CLIENT.send_data("player-action",{"action":"attack","pos":pos,"radius":radius,"pow":power})
+
+
+    #todo: implement atack Enimy-AI
+    pass
 
 def command_send_executeLuaFunctionCall(func_name):
     global MULTIPLAYER_CLIENT
@@ -74,16 +197,27 @@ def command_send_executeLuaFunctionCall(func_name):
     MULTIPLAYER_CLIENT.send_data("sync_update",{"update-type":"lua-function-call","function-name":func_name})
 
     pass
+def updateMultyPlayerAnimation(player_id,animationName,loop=False,times_if_Loop=0):
+    global OtherPlayers
+    #todo: implement Animation Execution
+    if not loop:
+        OtherPlayers[player_id][1].play(animationName)
+        return
+    OtherPlayers[player_id][1].loop(animationName)
 
+    pass
 
 KillPositionUpdateFlag=False
+
+
+
 def sendClientPositionUpdate(x,y):
     global MULTIPLAYER_CLIENT
     MULTIPLAYER_CLIENT.send_data("sync_update",{"update-type":"player-pos-update","pos":f"{x}:{y}","player-id":randomuid})
 def sendCliendSelfJoinWorld():
     global MULTIPLAYER_CLIENT
 
-    MULTIPLAYER_CLIENT.send_data("sync_update",{"update-type":"player-join-world","player-id":randomuid,})
+    MULTIPLAYER_CLIENT.send_data("sync_update",{"update-type":"player-join-world","player-id":randomuid,"player-name":"#pn-"+randomuid})
 
 def command_send_backToTitle():
     global MULTIPLAYER_CLIENT
@@ -97,14 +231,25 @@ def requestClientsSpawnSignal():
 
 def updateMultyPlayerposition(uuid,new_x,new_y):
     if uuid in OtherPlayers.keys():
-        render_loop.moveto(OtherPlayers[uuid],new_x,new_y)
-        print("updated pos")
+        #print(OtherPlayers[uuid])
+        render_loop.moveto(OtherPlayers[uuid][0],new_x,new_y)
+        render_loop.moveto(OtherPlayers[uuid][2],new_x+25,new_y-20)
+        #print("updated pos")
         return
     AddNewPlayerToLevel(uuid,"")
-    print("unregistered_player",uuid)
+    #print("unregistered_player",uuid)
 
+def sendIFMultiplayerAnimation(name):
+    global MULTIPLAYER_CLIENT
+    if not flags["multiplayer"]:
+        return
 
-
+    MULTIPLAYER_CLIENT.send_data("sync_update",{"update-type":"player-animation-start","player-id":randomuid,"animation-name":name})
+def sendIFMultiplayerAnimation_loop(name,times):
+    global MULTIPLAYER_CLIENT
+    if not flags["multiplayer"]:
+        return
+    MULTIPLAYER_CLIENT.send_data("sync_update",{"update-type":"player-animation-loop","player-id":randomuid,"animation-name":name,"rep":times})
 
 
 def Multiplayer_selectLevel(level_name):
@@ -182,7 +327,7 @@ def keyOptions():
         backupKeypressfunc=render_loop.keypressfunction
         render_loop.keypressfunction=listenkey
 
-        print(uid)
+        #print(uid)
     blist.append(render_loop.addText("Key Config", SCREEN_WIDTH/2-50, 10, font_size=40))
     def returnToTitle():
         render_loop.removes(blist)
@@ -193,7 +338,19 @@ def keyOptions():
     for n,option in enumerate(keyConfig):
 
         blist.append(Button(render_loop, SCREEN_WIDTH/2-60, 60+34*n, width=200, height=30, text=f"{option } : {keyConfig[option][1]}", click_function=lambda keyuid=option:  changekey(keyuid), font_size=20))
+def removeMultiplayer():
+    global MULTIPLAYER_CLIENT,I_AM_HOST
+    if not flags["multiplayer"]:
+        return
 
+
+    MULTIPLAYER_CLIENT.disconnect()
+    MULTIPLAYER_CLIENT=None
+    I_AM_HOST=False
+    flags["multiplayer"]=False
+    render_loop.removes(blist)
+    title_screen(render_loop)
+    pass
 
 def createGameclient():
     global MULTIPLAYER_CLIENT
@@ -204,6 +361,7 @@ def createGameclient():
     c.receveFunction=clientListenData_IN
     c.connect()
     render_loop.addText("Fatal Error Conection lost ", 10, 10, 30, (255,0,0),)
+
 
 from effectShaders import destructionIlusion,Screenshake
 
@@ -281,13 +439,15 @@ def showMultiplayerMenu():
                 try:
                     multiplayerModels.beHost()
                 except Exception as e:
-                    print(e)
+                    #print(e)
                     render_loop.addText("Fatal Error Server error ", 10, 10, 30, (255,0,0),)
 
             threading.Thread(target=server).start()
 
 
             threading.Thread(target=createGameclient).start()
+            returnToTitle()
+
 
 
         threading.Thread(target=gamehost()).start()
@@ -297,6 +457,7 @@ def showMultiplayerMenu():
     def join_game():
 
         threading.Thread(target=createGameclient).start()
+        returnToTitle()
 
 
         pass
@@ -334,14 +495,14 @@ def title_screen(render_loop):
 
     xline1 = SCREEN_WIDTH / 2 - 100
 
-    title = render_loop.addText("My Game", xline1-40, 100, 90, )
+    title = render_loop.addText("PixFrame2D", xline1-40, 100, 90, )
 
     def quit():
         pygame.quit()
         quit()
 
     def showOptions():
-        print("Hide Options")
+        #print("Hide Options")
         render_loop.hides(blist)
         ShowOptions()
 
@@ -380,6 +541,10 @@ def title_screen(render_loop):
 def playsound(sound):
 
     threading.Thread(target=sound.play).start()
+
+
+
+
 def loopsound(sound):
 
     threading.Thread(target=sound.play,args=(-1,)).start()
@@ -398,7 +563,7 @@ def display_Credits():
         y = 0
         for event in mouseButtons_pressed:
             if event.type == pygame.MOUSEBUTTONDOWN:
-                print(event.button)
+                #print(event.button)
                 if event.button == 4:
                     y += 100
                 elif event.button == 5:
@@ -407,7 +572,7 @@ def display_Credits():
                     render_loop.map_ofset_y += y
                 elif (y < 0):
                     render_loop.map_ofset_y += y
-                print(render_loop.map_ofset_y)
+                #(render_loop.map_ofset_y)
                 break
 
     render_loop.keypressfunction = on_key
@@ -447,7 +612,7 @@ def level_select_screen():
     def load_levl(lev_file_path):
         Multiplayer_selectLevel(lev_file_path)
 
-        print("selected", lev_file_path)
+        #print("selected", lev_file_path)
 
         for i in level_select_store:
             render_loop.clearClickListener(i)
@@ -464,7 +629,7 @@ def level_select_screen():
         """<Event(1025-MouseButtonDown {'pos': (206, 393), 'button': 4, 'touch': False, 'window': None})>"""
         for event in mouseButtons_pressed:
             if event.type == pygame.MOUSEBUTTONDOWN:
-                print(event.button)
+                #print(event.button)
                 if event.button == 4:
                     y += 100
                 elif event.button == 5:
@@ -473,19 +638,37 @@ def level_select_screen():
                     render_loop.map_ofset_y += y
                 elif (y < 0):
                     render_loop.map_ofset_y += y
-                print(render_loop.map_ofset_y)
+                #print(render_loop.map_ofset_y)
                 break
 
     render_loop.keypressfunction = on_key
     level_select_store = []
-    t = render_loop.addImage("imgs/level_select_bg.png", 0, 0, uses_map_offset=False)
-    level_select_store.append(t)
+
+
+    row,colum=0,0
+    lev_g_size_x=240
+
     for n, i in enumerate(all_level_overview_json):
-        t = render_loop.addText(f"{n+1}. "+i["name"], x, 150 + 50 * n, 30, uses_map_offset=True)
+
+        l=render_loop.addImage("imgs/levelimg.png",x+lev_g_size_x*colum, 150 + 190*row, uses_map_offset=True)
+        level_select_store.append(l)
+        try:
+
+            level_select_store.append( render_loop.addImage(i["file"]+"preview.png",x+lev_g_size_x*colum+8, 150 + 190*row+8, uses_map_offset=True))
+        except Exception as e:
+
+            pass
+        t = render_loop.addText(f"{n+1}. "+i["name"], 20+x+lev_g_size_x*colum, 285 + 190*row, 30, uses_map_offset=True)
+
+        colum+=1
+        if colum>2:
+            colum=0
+            row+=1
+
         render_loop.addClickListener(t, lambda ln=i["file"]: load_levl(ln))
         level_select_store.append(t)
 
-    t = render_loop.addImage("imgs/level_select.png", 0, 0, uses_map_offset=False)
+    t = render_loop.addImageFixedWidth("imgs/level_select.png",0,0, render_loop.screen_width ,100, uses_map_offset=False)
     level_select_store.append(t)
     t = render_loop.addText("Select a Level", x - 30, 50, 50, uses_map_offset=False)
     level_select_store.append(t)
@@ -504,6 +687,14 @@ def updateHeightWidth(w,h):
 
 render_loop = GameRenderLoop(SCREEN_WIDTH, SCREEN_HEIGHT)
 
+
+StartupDoneFlag=False
+def sratup():
+    global StartupDoneFlag
+    if DISPLAY_STARTUP_LOGO:
+        render_loop.startuplogo()
+    StartupDoneFlag=True
+threading.Thread(target=sratup()).start()
 
 # render_loop.startuplogo()
 def onclick():
@@ -574,9 +765,34 @@ levelOBJ=None
 scriptsManagers= {}
 from audio import definebgMusic
 from scripting import scriptManager
+
+
+
+def checkForPlayerColideDamage(px,py):
+    try:
+        for i in DamageAreas:
+            #(i,amount,radius)
+            if player:
+                posx,posy=render_loop.getXY(i[0])
+            checkPlayerRecivesDamage((posx+i[3][0],posy+i[3][1]),i[2],i[1])
+    except Exception:
+        pass
+
+def resetDamageAreas():
+    global DamageAreas
+    DamageAreas=[]
+    #print("DamageAreas",DamageAreas)
+    #print("DamageAreas",DamageAreas)
+
+
+DamageAreas=[]
+
 def startGame(path_uuid=None):
-    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation,level_store_uid_to_Elementid,levelOBJ,scriptsManagers
+    global player, player_surf, currant_game_file,backgroundMusic,musicBG_tile,musicBG_author,player_animation,level_store_uid_to_Elementid,levelOBJ,scriptsManagers,player_is_in_deathScreen,Health
     print("Game Started")
+    start_t=time.time()
+    player_is_in_deathScreen=False
+    Health=Max_Health
 
     render_loop.pauseMenu=pase_to_engene_pause_func
     levelOBJ = Level(render_loop)
@@ -591,7 +807,7 @@ def startGame(path_uuid=None):
     start_x, start_y = 100, 100
 
     player,player_animation = render_loop.addAnimatedImage("imgs/animations/player.anime", start_x, start_y, True)
-    print("player", player)
+    #print("player", player)
 
     player_surf = render_loop.getSurface(player)
 
@@ -645,7 +861,15 @@ def startGame(path_uuid=None):
                         if (interact_type=="Interactive")|(interact_type=="OneTime-Interact"):
                             keyPressInteractions.append((e["x"], e["y"],e["x"]+e["width"],e["y"]+e["height"],interact_type,e["nbt"]["interact"]["trigger"],e["nbt"]["interact"]["function"],e["uuid"]))
 
+                    elif "damage" in e["nbt"]:
+                        amount=e["nbt"]["damage"]["amount"]
+                        radius=e["nbt"]["damage"]["radius"]
+                        ofset_area=e["nbt"]["damage"]["ofset_area"]
+                        DamageAreas.append((i,amount,radius,ofset_area))
+
+
                     levelOBJ.nbts[e["uuid"]]=e["nbt"]
+
             elif e["type"] == "spawn":
                 render_loop.moveto(player, e["x"], e["y"])
             elif e["type"] == "bg_image":
@@ -736,6 +960,12 @@ def startGame(path_uuid=None):
         EnablePlayerPositionUpdate()
         if I_AM_HOST:
             requestClientsSpawnSignal()
+    for i in range(0,Max_Health):
+        HealthBar.addDeathHaertBarItem()
+        HealthBar.addHeathBarItem()
+    print("load time: ",time.time()-start_t)
+
+
 
 
 
@@ -792,7 +1022,7 @@ def display_musicInfo():
 
 
 def move(xp,sprint=False):
-    global player_surf, colidebles
+    global player_surf, colidebles,player_facing_x
 
     if xp:
 
@@ -811,12 +1041,17 @@ def move(xp,sprint=False):
             if (a & b):
                 render_loop.moveto(player, x + ms, y)
             player_animation.loop("walk",5)
+            sendIFMultiplayerAnimation_loop("walk",5)
         else:
 
             a, b = not check_if_collisions(player_surf, x + ms + w, y, colidebles), \
                 not check_if_collisions(player_surf, x + ms + w, y, colidebles)
             print(a, b)
             if (a & b):
+                if x>0:
+                    player_facing_x=1
+                else:
+                    player_facing_x=-1
                 render_loop.moveto(player, x + xp, y)
 
 
@@ -846,14 +1081,14 @@ def jump_s():
     a = check_if_collisions(player_surf, x, y + 2 * ji-10, colidebles)
 
     if (a):
-        print(a)
-        print("end-0")
+        #print(a)
+        #print("end-0")
         jumping = False
         falling = True
         return
     render_loop.moveto(player, x, y - 2 * ji)
     if jumpacseleration < 2:
-        print("end-1")
+        #print("end-1")
         jumping = False
         falling = True
 def pushUp():
@@ -870,6 +1105,7 @@ def pushUp():
     if (a):
 
         render_loop.moveto(player, x, y -2)
+
 
 
 def calculate_map_correction(screen_width, screen_height, margin_x, margin_y, player_x, player_y):
@@ -929,8 +1165,8 @@ def gravity():
     else:
 
         fall_acelaration /= 2
-        print(fall_acelaration)
-        print("divide")
+        #print(fall_acelaration)
+        #print("divide")
 
 
 #
@@ -970,12 +1206,14 @@ def on_debub_ON(tr):
             render_loop.removeElement(i)
 
         debug_infos = [
-            f"Player pos-raw {render_loop.getXY(player)}",
-            f"World_offset {render_loop.map_ofset_x} : {render_loop.map_ofset_y}",
-            f"Total Memory {convert_bytes_to_megabytes_or_kilobytes(process.memory_info().rss)}",
-            f"Total Memory {convert_bytes_to_megabytes_or_kilobytes(process.memory_info().vms)}",
-            f"CPU Usage {CPU_usage}s%",
-            f"Active Shaders {render_loop.info_only_engagedShaderName}s%"
+            f"Player pos-raw: {render_loop.getXY(player)}",
+            f"World_offset: {render_loop.map_ofset_x} : {render_loop.map_ofset_y}",
+            f"Memory usage: {convert_bytes_to_megabytes_or_kilobytes(process.memory_info().rss)}",
+            f"Total Memory : {convert_bytes_to_megabytes_or_kilobytes(process.memory_info().vms)}",
+            f"CPU Usage : {CPU_usage}s%",
+            f"Active Shaders {render_loop.info_only_engagedShaderName}s%",
+            f"Heath : {Health}",
+            f"Multiplayer : Active?:{flags['multiplayer']}; host?{I_AM_HOST}",
 
         ]
         debug_elements.clear()
@@ -1028,6 +1266,8 @@ def replay():
     pauseAll()
     # print("klicked")
     render_loop.hides(blist)
+    HealthBar.removeHeathBarItems()
+    resetDamageAreas()
 
     startGame(None)
 
@@ -1073,6 +1313,7 @@ def finisch_Menu():
         # print("klicked")
         pauseAll()
         clearLevel()
+        resetDamageAreas()
 
         render_loop.removeElement(death_titel)
         render_loop.removes([play, quit, levsel])
@@ -1092,6 +1333,12 @@ def finisch_Menu():
 
 from audio import pauseAll
 
+
+def resetHeath():
+    global Health
+    Health =Max_Health
+Max_Health=4
+Health=Max_Health
 
 def clearLevel():
     global level_store, daeth_areas, player, player_surf, jumping, falling, finisch_areas,bg_music_indicator
@@ -1118,9 +1365,13 @@ def clearLevel():
 
     pauseAll()
 def on_death():
+    global player_is_in_deathScreen
     clearLevel()
-
+    player_is_in_deathScreen = True
+    moveMultiplayersOutOfWay()
     playsound(sound.death_sound)
+
+    HealthBar.removeHeathBarItems()
     death_Menu()
 
 
@@ -1149,24 +1400,22 @@ backtoTitleFunction_for_currantlevel=None
 def multiplayer_executeBackToTitle():#
     global in_pause_menu
     # print("klicked")
-    in_pause_menu=False
-
-    in_pause_menu = False
-    # print("klicked")
-
-    render_loop.pauseMenu = None
-
-    pauseAll()
-
-    render_loop.removes(blist)
-    clearLevel()
+    cleanup_all()
 
     title_screen(render_loop)
 
 
 
 
+def cleanup_all():
+    global in_pause_menu
+    render_loop.game_is_paused = False
+    # print("klicked")
+    pauseAll()
 
+    render_loop.removes(blist)
+    in_pause_menu = False
+    clearLevel()
 def display_pause_menu():
     global blist
     blist=[]
@@ -1175,14 +1424,7 @@ def display_pause_menu():
     pause_titel = render_loop.addText("Game Paused", 40, 30, 80, (131, 201, 244), uses_map_offset=False)
     render_loop.addSchadowIgnore(pause_titel)
     def replay():
-        global in_pause_menu
-        render_loop.game_is_paused=False
-        # print("klicked")
-        pauseAll()
-
-        render_loop.removes(blist)
-        in_pause_menu=False
-        clearLevel()
+        cleanup_all()
         render_loop.after(100,lambda :startGame(None))
 
 
@@ -1191,18 +1433,10 @@ def display_pause_menu():
 
         if flags["multiplayer"]:
             command_send_backToTitle()
+        HealthBar.removeHeathBarItems()
 
-        in_pause_menu = False
-        # print("klicked")
+        cleanup_all()
 
-
-        render_loop.pauseMenu=None
-
-        pauseAll()
-
-
-        render_loop.removes(blist)
-        clearLevel()
 
         title_screen(render_loop)
 
@@ -1344,7 +1578,8 @@ def getKeyHandle(keyid):
 def resetMulty_players():
     global OtherPlayers,players_to_add
     for id in OtherPlayers:
-        render_loop.removeElement(OtherPlayers[id])
+
+        render_loop.removeElement(OtherPlayers[id][0])
 
     OtherPlayers = {}
 
@@ -1354,9 +1589,9 @@ OtherPlayers= {}
 
 players_to_add=[]
 
-def AddNewPlayerToLevel(uid,model="model"):
+def AddNewPlayerToLevel(uid,model="model",playerName="???"):
     global players_to_add
-    players_to_add+=[(uid,model)]
+    players_to_add+=[(uid,model,playerName)]
 
 
 def playerPosUpdateThread():
@@ -1367,7 +1602,7 @@ def playerPosUpdateThread():
             if player:
                 px,py=render_loop.getXY(player)
                 if flags.get("multiplayer", False):
-                    print(px,py)
+                    #print(px,py)
                     sendClientPositionUpdate(px, py)
         except Exception as e:
             print("Data send Error")
@@ -1379,8 +1614,8 @@ def playerPosUpdateThread():
 def EnablePlayerPositionUpdate():
 
     threading.Thread(target=playerPosUpdateThread).start()
-
-
+player_facing_x=1
+player_is_in_deathScreen=False
 def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
     global player, jumping, jumpacseleration,escape_pressing,in_pause_menu,hide_display_pause_function,OtherPlayers,players_to_add
     """Function runs on every tick """
@@ -1388,11 +1623,17 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
     if not player:
         return
     if len(players_to_add)>0:
-        other_player_uid,m=players_to_add.pop(0)
-        OtherPlayers[other_player_uid]=render_loop.addImage("imgs/second_player.png", 0,0,uses_map_offset=True)
+        if not player_is_in_deathScreen:
+            other_player_uid,m,name=players_to_add.pop(0)
+
+            OtherPlayers[other_player_uid] = (*render_loop.addAnimatedImage("imgs/animations/player.anime", -10000,-10000, True),render_loop.addText(player_id_to_name.get(other_player_uid,"@"+other_player_uid), -10000, -10000, 20, (255, 255, 255), True))
 
 
-
+    Scedued_Coldowns()
+    px, py = render_loop.getXY(player)
+    checkForPlayerColideDamage(px,py)
+    if player_is_in_deathScreen:
+        return
 
     x, y,sprinting = 0, 0,False
 
@@ -1423,7 +1664,19 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
 
 
         if getKeyHandle("gc-attac-primary") in pressed_keys:
-            player_animation.play("attack")
+
+            if Cooldowns.attack_cooldown<=0:
+                print("attacking")
+                player_animation.play("attack")
+                sendIFMultiplayerAnimation("attack")
+                Cooldowns.attack_cooldown=PARMS.attack_cooldown
+                if player_facing_x<0:
+
+                    ACTION_ATTACK((px-25,py),PARMS.player_attack_radius_def,PARMS.player_attack_pow_def)
+                else:
+                    ACTION_ATTACK((px+50,py),PARMS.player_attack_radius_def,PARMS.player_attack_pow_def)
+            else:
+                print("Attac cooldown active")
 
         if getKeyHandle("Button-Sprint") in pressed_keys:
             sprinting=True
@@ -1431,10 +1684,10 @@ def handle_keypress(pressed_keys, mouseButtons_pressed,triger_once):
         if getKeyHandle("gc-control-jump") in pressed_keys:
             if not jumping:
                 if falling:
-                    print("fall")
+                    #print("fall")
                     jumping = False
                 else:
-                    print("jump")
+                    #print("jump")
                     jumpacseleration = 4.4
                     jumping = True
                     playsound(sound.jump_sound)
@@ -1495,4 +1748,13 @@ render_loop.togleSchadows(SCHADOW_STATE.OFF)
 # display_start_screen(render_loop)
 
 pygame.display.set_caption(randomuid)
+
+""" build procedure """
+
+
+render_loop.addText("Dev Version ",10,70,30,(255,0,0))
+
+while not StartupDoneFlag:
+    time.sleep(0.1)
+
 render_loop.run(updateHeightWidth)

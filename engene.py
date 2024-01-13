@@ -38,10 +38,12 @@ from effectShaders import baseShader,destructionIlusion,Screenshake
 import services.dialog_service
 class GameRenderLoop:
     def __init__(self, width, height,viewpoint=ViewPoints.sideview):
+        self.shadow_imageStore = {}
         self.pauseMenu = None
         self.in_dialog = False
         self.in_cutsene = False
         self.lights =[]
+        self.pygameImageStore={}
         self.screen_efects = []
         self.pause_gameplay_level_engene=False
         self.break_any_non_game_mode = False
@@ -175,11 +177,14 @@ class GameRenderLoop:
 
         fade_in_time = 1000  # milliseconds
         fade_out_time = 1000  # milliseconds
+        font = pygame.font.SysFont(None, 24)
+        copiright=pygame.font.Font.render(font,"© PackTheCommand 2024 ",True,(255,255,255))
 
         for alpha in range(0, 255):
             logo_image.set_alpha(alpha)
             renderloop.screen.fill((0, 0, 0))
             renderloop.screen.blit(logo_image, (logo_x, logo_y))
+            renderloop.screen.blit(copiright,(20,renderloop.screen_height-copiright.get_height()-10))
             pygame.display.flip()
             pygame.time.wait(fade_in_time // 255)
 
@@ -192,8 +197,9 @@ class GameRenderLoop:
             pygame.display.flip()
             pygame.time.wait(fade_out_time // 255)
 
-        renderloop.elements = [element for element in renderloop.elements if element[1] != logo_image]
-        pygame.time.wait(1000)
+
+
+        pygame.time.wait(50)
 
     def hide(self, element_id):
 
@@ -332,11 +338,19 @@ class GameRenderLoop:
         self.animation_colections[element_id]=animationObj
         self.elements[element_id]=( animationObj, x, y,uses_map_offset)
         return element_id,animationObj
-    def addImage(self, path, x, y, scale_x=1.0, scale_y=1.0,uses_map_offset=True):
-        image = pygame.image.load(path)
-        image = pygame.transform.scale(image, (int(image.get_width() * scale_x), int(image.get_height() * scale_y)))
+    def addImage(self, path, x, y, scale_x=1.0, scale_y=1.0,uses_map_offset=True,noShadow=False):
+        p=path+f"{scale_x}_{scale_y}"
+        if p in self.pygameImageStore:
+            image=self.pygameImageStore[p]
+        else:
+            image = pygame.image.load(path)
+            image = pygame.transform.scale(image, (int(image.get_width() * scale_x), int(image.get_height() * scale_y)))
         element_id = self.genId()
-        self.shadow_textures[element_id] = self.modify_translucent_areas(image, self.schadow_intensity)
+        if not noShadow:
+
+            self.shadow_textures[element_id] = self.modify_translucent_areas(image, self.schadow_intensity,p)
+        else:
+            self.shadow_textures[element_id] = self.modify_translucent_areas(image, (255,255,255),p)
 
         self.elements[element_id]=( image, x, y,uses_map_offset)
         return element_id
@@ -376,9 +390,13 @@ class GameRenderLoop:
         #except:
         #    return "end"
 
-    def modify_translucent_areas(self,image, color):
+    def modify_translucent_areas(self,image, color,path):
         """If an image doesnt work in the shadow"""
-        color=self.schadow_intensity
+        if path:
+            if path in self.shadow_imageStore:
+
+                return self.shadow_imageStore[path]
+
 
         modified_image = image.convert()
         tr=False
@@ -403,6 +421,10 @@ class GameRenderLoop:
             modified_image.fill((255,0,0))"""
 
         print(modified_image.get_size())
+        if path:
+
+            self.shadow_imageStore[path]=modified_image
+    
         return modified_image
 
     def addTorch(self,x,y,width,flickering_light=True):
@@ -411,7 +433,7 @@ class GameRenderLoop:
         self.lights=[]
         self.shadow_textures={}
 
-    def addImageFixedWidth(self, path, x, y, width,height,uses_map_offset=True):
+    def addImageFixedWidth(self, path, x, y, width,height,uses_map_offset=True,noShadow=False):
         
         
         
@@ -422,18 +444,23 @@ class GameRenderLoop:
         
         
         element_id = self.genId()
-        if path not in self.shadow_store:
+        """if path not in self.shadow_store:
             st=self.modify_translucent_areas(image, self.schadow_intensity)
             self.shadow_textures[element_id]=st
             self.shadow_store[path]=st
         else:
-            self.shadow_textures[element_id]=self.shadow_store[path]
+            self.shadow_textures[element_id]=self.shadow_store[path]"""
+        if not noShadow:
+
+            self.shadow_textures[element_id] = self.modify_translucent_areas(image, self.schadow_intensity,path)
+        else:
+            self.shadow_textures[element_id] = self.modify_translucent_areas(image, (255,255,255),path)
 
         self.elements[element_id]=( image, x, y,uses_map_offset)
         #print(image,element_id)
         return element_id
     def craete_manual_shadow_image(self,image):
-        return self.modify_translucent_areas(image, self.schadow_intensity)
+        return self.modify_translucent_areas(image, self.schadow_intensity,None)
 
     def addText(self, text, x, y, font_size=36, color=(255, 255, 255),uses_map_offset=False):
         if font_size not in self.font_cache:

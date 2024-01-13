@@ -100,6 +100,7 @@ class Client:
     def __init__(self, host, port,username):
         self.host = host
         self.port = port
+        self.i_am_active=True
 
         self.username = username
         self.receveFunction=lambda head,body:print(f"Received data: {head}, {body}")
@@ -119,6 +120,10 @@ class Client:
 
 
         self.listen_for_data()
+    def disconnect(self):
+        self.i_am_active=False
+        self.close()
+        return True
 
     def send_data(self,type, data):
         self.emp_inst.send(type,data)
@@ -132,7 +137,7 @@ class Client:
     def listen_for_data(self):
 
         emp_inst=self.emp_inst
-        while True:
+        while self.i_am_active:
             try:
                 data = self.client_socket.recv(4096)
                 if not data:
